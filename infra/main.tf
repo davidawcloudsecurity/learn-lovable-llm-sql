@@ -32,6 +32,7 @@ variable "project_name" {
 variable "dataset_s3_bucket" {
   description = "S3 bucket containing the housing dataset"
   type        = string
+  default     = "your-s3-bucket-name"  # Will be overridden by terraform.tfvars
 }
 
 variable "db_master_username" {
