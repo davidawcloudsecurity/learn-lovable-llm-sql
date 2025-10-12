@@ -162,7 +162,7 @@ resource "aws_secretsmanager_secret_version" "rds_credentials" {
   })
 }
 
-# Create RDS instance
+# Update RDS instance resource
 resource "aws_db_instance" "text_to_sql_db" {
   identifier              = "text-to-sql-db"
   instance_class          = var.rds_instance_class
@@ -172,13 +172,12 @@ resource "aws_db_instance" "text_to_sql_db" {
   username                = var.rds_username
   password                = random_password.rds_password.result
   db_name                 = var.rds_database_name
-  publicly_accessible     = true
+  publicly_accessible     = true  # Set to false for production
   skip_final_snapshot     = true
   backup_retention_period = 7
-  backup_window           = "03:00-04:00"
-  maintenance_window      = "Mon:04:00-Mon:05:00"
   
-  # Security groups will be created separately
+  # Updated network configuration
+  db_subnet_group_name    = aws_db_subnet_group.text_to_sql_db_subnet_group.name
   vpc_security_group_ids  = [aws_security_group.rds_sg.id]
   
   # Enable performance insights
@@ -186,10 +185,6 @@ resource "aws_db_instance" "text_to_sql_db" {
   
   # Enable storage encryption
   storage_encrypted = true
-  
-  # Enable Enhanced Monitoring
-  monitoring_interval = 60
-  monitoring_role_arn = aws_iam_role.rds_monitoring.arn
   
   tags = {
     Name        = "text-to-sql-database"
