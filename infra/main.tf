@@ -41,6 +41,12 @@ variable "db_master_username" {
   default     = "postgres"
 }
 
+variable "db_password" {
+  description = "Master username for RDS PostgreSQL"
+  type        = string
+  default     = "P@ssw0rd123!" # to be replace
+}
+
 variable "db_name" {
   description = "Database name"
   type        = string
@@ -63,7 +69,7 @@ resource "aws_secretsmanager_secret_version" "db_credentials" {
   secret_id = aws_secretsmanager_secret.db_credentials.id
   secret_string = jsonencode({
     username = var.db_master_username
-    password = random_password.db_password.result
+    password = var.db_password
     engine   = "postgres"
     host     = aws_db_instance.postgresql.address
     port     = 5432
@@ -286,7 +292,7 @@ resource "aws_db_instance" "postgresql" {
   storage_type            = "gp3"
   db_name                 = var.db_name
   username                = var.db_master_username
-  password                = random_password.db_password.result
+  password                = var.db_password
   db_subnet_group_name    = aws_db_subnet_group.main.name
   vpc_security_group_ids  = [aws_security_group.rds.id]
   publicly_accessible     = false
@@ -327,7 +333,7 @@ resource "aws_memorydb_user" "main" {
 
   authentication_mode {
     type      = "password"
-    passwords = [random_password.db_password.result]
+    passwords = [var.db_password]
   }
 
   tags = {
