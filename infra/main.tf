@@ -424,6 +424,31 @@ resource "aws_iam_role_policy" "lambda_policy" {
   })
 }
 
+# Null resource to create terraform.tfvars if it doesn't exist
+resource "null_resource" "create_tfvars" {
+  triggers = {
+    always_run = timestamp()
+  }
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      if [ ! -f terraform.tfvars ]; then
+        echo "Creating terraform.tfvars file..."
+        cat > terraform.tfvars << 'TFVARS'
+aws_region         = "us-west-2"
+project_name       = "text-to-sql-chatbot"
+dataset_s3_bucket  = "your-s3-bucket-name"  # CHANGE THIS
+db_master_username = "postgres"
+db_name            = "housingdb"
+TFVARS
+        echo "Created terraform.tfvars - Please update dataset_s3_bucket with your bucket name!"
+      else
+        echo "terraform.tfvars already exists, skipping creation."
+      fi
+    EOT
+  }
+}
+
 # Null resource to build Lambda packages
 resource "null_resource" "build_lambda_packages" {
   triggers = {
@@ -474,6 +499,8 @@ resource "null_resource" "build_lambda_packages" {
       echo "Done! Created Lambda packages."
     EOT
   }
+
+  depends_on = [null_resource.create_tfvars]
 }
 
 # Lambda Layer for dependencies
