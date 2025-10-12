@@ -65,19 +65,24 @@ jobs:
           
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v1
+        working-directory: infra        
         
       - name: Terraform Init
         run: terraform init
+        working-directory: infra        
         
       - name: Terraform Validate
         run: terraform validate
-
+        working-directory: infra
+        
       - name: Terraform Format
-        run: terraform fmt -recursive  
+        run: terraform fmt -recursive
+        working-directory: infra      
         
       - name: Terraform Plan
         run: |
           terraform plan
+        working-directory: infra
 
       - name: Terraform Apply or Destroy
         run: |
@@ -129,6 +134,7 @@ jobs:
             echo "Displaying Terraform outputs..."
             terraform output            
           fi
+        working-directory: infra
 
       - name: Terraform Destroy on Failure
         if: failure()
@@ -142,3 +148,4 @@ jobs:
           if [ -n "$(aws iam list-instance-profiles --query InstanceProfiles[*].InstanceProfileName | grep AmazonSSMManagedInstanceProfile | sed 's/[",]//g')" ]; then
             aws iam delete-instance-profile --instance-profile-name $(aws iam list-instance-profiles --query InstanceProfiles[*].InstanceProfileName | grep AmazonSSMManagedInstanceProfile | sed 's/[",]//g')
           fi
+        working-directory: infra
