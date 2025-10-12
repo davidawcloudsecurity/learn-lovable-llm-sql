@@ -424,17 +424,72 @@ resource "aws_iam_role_policy" "lambda_policy" {
   })
 }
 
-# Lambda Layer for dependencies (placeholder - needs actual layer creation)
+# Null resource to build Lambda packages
+resource "null_resource" "build_lambda_packages" {
+  triggers = {
+    data_indexer_hash = filemd5("${path.module}/data_indexer.py")
+    text_to_sql_hash  = filemd5("${path.module}/text_to_sql.py")
+    requirements_hash = filemd5("${path.module}/requirements.txt")
+    always_run        = timestamp()
+  }
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      echo "Building Lambda deployment packages..."
+      
+      # Create directories
+      mkdir -p lambda_packages/data_indexer
+      mkdir -p lambda_packages/text_to_sql
+      mkdir -p lambda_packages/layer/python
+      
+      # Install dependencies for Lambda layer
+      echo "Installing dependencies for Lambda layer..."
+      pip3 install \
+        -r requirements.txt \
+        -t lambda_packages/layer/python/ \
+        --platform manylinux2014_x86_64 \
+        --only-binary=:all: \
+        --upgrade
+      
+      # Create layer zip
+      echo "Creating Lambda layer package..."
+      cd lambda_packages/layer
+      zip -r ../../lambda_layer.zip python
+      cd ../..
+      
+      # Copy data_indexer code
+      echo "Packaging data_indexer function..."
+      cp data_indexer.py lambda_packages/data_indexer/index.py
+      cd lambda_packages/data_indexer
+      zip -r ../../data_indexer.zip .
+      cd ../..
+      
+      # Copy text_to_sql code
+      echo "Packaging text_to_sql function..."
+      cp text_to_sql.py lambda_packages/text_to_sql/index.py
+      cd lambda_packages/text_to_sql
+      zip -r ../../text_to_sql.zip .
+      cd ../..
+      
+      echo "Done! Created Lambda packages."
+    EOT
+  }
+}
+
+# Lambda Layer for dependencies
 resource "aws_lambda_layer_version" "dependencies" {
-  filename            = "lambda_layer.zip" # You'll need to create this
+  filename            = "lambda_layer.zip"
   layer_name          = "${var.project_name}-dependencies"
   compatible_runtimes = ["python3.12"]
   description         = "Dependencies for text-to-sql functions"
+  source_code_hash    = filebase64sha256("lambda_layer.zip")
+
+  depends_on = [null_resource.build_lambda_packages]
 }
 
 # Data Indexer Lambda Function
 resource "aws_lambda_function" "data_indexer" {
-  filename         = "data_indexer.zip" # You'll need to create this
+  filename         = "data_indexer.zip"
   function_name    = "${var.project_name}-DataIndexerFunction"
   role             = aws_iam_role.lambda_role.arn
   handler          = "index.handler"
@@ -454,6 +509,7 @@ resource "aws_lambda_function" "data_indexer" {
       DB_HOST         = aws_db_instance.postgresql.address
       DB_NAME         = var.db_name
       MEMORYDB_ENDPOINT = aws_memorydb_cluster.main.cluster_endpoint[0].address
+      AWS_REGION        = var.aws_region
     }
   }
 
@@ -462,11 +518,13 @@ resource "aws_lambda_function" "data_indexer" {
   tags = {
     Name = "${var.project_name}-data-indexer"
   }
+
+  depends_on = [null_resource.build_lambda_packages]
 }
 
 # Text to SQL Lambda Function
 resource "aws_lambda_function" "text_to_sql" {
-  filename         = "text_to_sql.zip" # You'll need to create this
+  filename         = "text_to_sql.zip"
   function_name    = "${var.project_name}-TextToSQLFunction"
   role             = aws_iam_role.lambda_role.arn
   handler          = "index.handler"
@@ -495,6 +553,8 @@ resource "aws_lambda_function" "text_to_sql" {
   tags = {
     Name = "${var.project_name}-text-to-sql"
   }
+
+  depends_on = [null_resource.build_lambda_packages]
 }
 
 # API Gateway
