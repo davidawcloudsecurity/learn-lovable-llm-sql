@@ -941,9 +941,13 @@ resource "aws_lambda_layer_version" "dependencies" {
   layer_name          = "${var.project_name}-dependencies"
   compatible_runtimes = ["python3.12"]
   description         = "Dependencies for text-to-sql functions"
-  source_code_hash    = filebase64sha256("lambda_layer.zip")
+  source_code_hash    = fileexists("lambda_layer.zip") ? filebase64sha256("lambda_layer.zip") : null
 
   depends_on = [null_resource.build_lambda_packages]
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 # Data Indexer Lambda Function
