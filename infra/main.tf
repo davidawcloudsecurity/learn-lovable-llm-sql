@@ -44,7 +44,7 @@ variable "db_master_username" {
 variable "db_password" {
   description = "Master username for RDS PostgreSQL"
   type        = string
-  default     = "P@ssw0rd123456789!" # to be replace
+  default     = "P@ssw0rd123456789" # to be replace
 }
 
 variable "db_name" {
