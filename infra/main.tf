@@ -994,7 +994,7 @@ resource "aws_lambda_function" "text_to_sql" {
   runtime          = "python3.12"
   timeout          = 30
   memory_size      = 1024
-  source_code_hash = filebase64sha256("text_to_sql.zip")
+  source_code_hash = fileexists("text_to_sql.zip") ? filebase64sha256("text_to_sql.zip") : null
 
   vpc_config {
     subnet_ids         = aws_subnet.private[*].id
