@@ -3,16 +3,18 @@ name: learn-lovable-llm-sql
 
 # Controls when the action will run. Invokes the workflow on push events but only for the main branch
 on:
-  workflow_dispatch:
-    inputs:
-      action:
-        description: 'Apply or destroy'
-        required: true
-        default: 'apply'
-      destroy-backend:
-        description: 'Also delete S3/DynamoDB backend (dangerous!)'
-        required: false
-        default: 'false'        
+  push:
+    branches: [ main ]
+#  workflow_dispatch:
+#    inputs:
+#      action:
+#        description: 'Apply or destroy'
+#        required: true
+#        default: 'apply'
+#      destroy-backend:
+#        description: 'Also delete S3/DynamoDB backend (dangerous!)'
+#        required: false
+#        default: 'false'        
 
 env: 
   AWS_REGION : "us-east-1" #Change to reflect your Region
