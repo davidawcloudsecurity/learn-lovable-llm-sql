@@ -154,5 +154,9 @@ jobs:
           echo "Check if text-to-sql-chatbot-bastion-role exist"
           if [ -n "$(aws iam list-roles --query 'Roles[*].RoleName' | grep -i text-to-sql-chatbot-bastion-role | sed 's/[",]//g')" ]; then
             aws iam delete-role --role-name $(aws iam list-roles --query 'Roles[*].RoleName' | grep -i text-to-sql-chatbot-bastion-role | sed 's/[",]//g')
+          fi
+          echo "Check if rds-monitoring-role exist"
+          if [ -n "$(aws iam list-roles --query 'Roles[*].RoleName' | grep -i rds-monitoring-role | sed 's/[",]//g')" ]; then
+            aws iam delete-role --role-name $(aws iam list-roles --query 'Roles[*].RoleName' | grep -i rds-monitoring-role | sed 's/[",]//g')
           fi          
         working-directory: infra
