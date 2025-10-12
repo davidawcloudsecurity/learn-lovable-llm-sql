@@ -165,9 +165,17 @@ jobs:
             aws iam delete-role --role-name $(aws iam list-roles --query 'Roles[*].RoleName' | grep -i text-to-sql-chatbot-bastion-role | sed 's/[",]//g')
           fi
           echo "Check if rds-monitoring-role exist"
-          if [ -n "$(aws iam list-roles --query 'Roles[*].RoleName' | grep -i rds-monitoring-role | sed 's/[",]//g')" ]; then
-            aws iam delete-role --role-name $(aws iam list-roles --query 'Roles[*].RoleName' | grep -i rds-monitoring-role | sed 's/[",]//g')
-          fi
+          # Detach policies and delete role if it exists
+          aws iam list-attached-role-policies --role-name rds-monitoring-role --query 'AttachedPolicies[].PolicyArn' --output text | \
+          xargs -n 1 -I {} aws iam detach-role-policy --role-name rds-monitoring-role --policy-arn {} || true
+          
+          # Delete inline policies
+          for policy in $(aws iam list-role-policies --role-name rds-monitoring-role --query 'PolicyNames' --output text 2>/dev/null || echo ""); do
+            aws iam delete-role-policy --role-name rds-monitoring-role --policy-name $policy || true
+          done
+          
+          # Delete the role
+          aws iam delete-role --role-name rds-monitoring-role || true
           echo "Try to get lock ID from error output"
           terraform plan -lock-timeout=1s 2>&1 | grep "ID:" | awk '{print $2}' | head -1 > lock_id.txt
           LOCK_ID=$(cat lock_id.txt)
