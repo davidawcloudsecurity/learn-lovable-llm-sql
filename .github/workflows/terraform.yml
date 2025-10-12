@@ -79,10 +79,17 @@ jobs:
       - name: Terraform Format
         run: terraform fmt -recursive
         working-directory: infra      
+
+      - name: Force unlock stale state
+        run: |
+          echo "Attempting to force unlock with ID: 042e2af2-2365-b42d-59ce-0b41b5d85299"
+          terraform force-unlock -force 042e2af2-2365-b42d-59ce-0b41b5d85299
+        continue-on-error: true
+        working-directory: infra
         
       - name: Terraform Plan
         run: |
-          terraform plan -lock=false
+          terraform plan
         working-directory: infra
 
       - name: Terraform Apply or Destroy
