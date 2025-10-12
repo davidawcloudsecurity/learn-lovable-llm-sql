@@ -82,7 +82,7 @@ jobs:
         
       - name: Terraform Plan
         run: |
-          terraform plan -lock-timeout=60s
+          terraform plan
         working-directory: infra
 
       - name: Terraform Apply or Destroy
