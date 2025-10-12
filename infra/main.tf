@@ -361,12 +361,21 @@ resource "aws_security_group" "ec2_sg" {
   description = "Security group for Text-to-SQL EC2 instance"
   vpc_id      = aws_vpc.text_to_sql_vpc.id
 
+  # Allow SSM agent connections
   ingress {
-    description = "SSH from user's IP"
-    from_port   = 22
-    to_port     = 22
+    description = "HTTPS for SSM agent"
+    from_port   = 443
+    to_port     = 443
     protocol    = "tcp"
-    cidr_blocks = ["${local.current_ip}/32"]
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    description = "HTTP for SSM agent"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   egress {
