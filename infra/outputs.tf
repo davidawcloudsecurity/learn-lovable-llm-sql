@@ -49,3 +49,23 @@ output "rds_connection_string" {
   value       = "postgresql://${var.rds_username}@${aws_db_instance.text_to_sql_db.address}:${aws_db_instance.text_to_sql_db.port}/${var.rds_database_name}"
   sensitive   = true
 }
+
+output "ec2_instance_id" {
+  description = "ID of the EC2 instance"
+  value       = aws_instance.rds_setup_instance.id
+}
+
+output "ec2_public_ip" {
+  description = "Public IP of the EC2 instance"
+  value       = aws_instance.rds_setup_instance.public_ip
+}
+
+output "ec2_public_dns" {
+  description = "Public DNS of the EC2 instance"
+  value       = aws_instance.rds_setup_instance.public_dns
+}
+
+output "ssm_command" {
+  description = "SSM command to connect to the instance"
+  value       = "aws ssm start-session --target ${aws_instance.rds_setup_instance.id}"
+}
