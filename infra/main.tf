@@ -28,6 +28,128 @@ resource "aws_secretsmanager_secret" "rds_credentials" {
   name = "text-to-sql-rds-credentials"
 }
 
+# Create VPC
+resource "aws_vpc" "text_to_sql_vpc" {
+  cidr_block           = "172.168.0.0/16"
+  enable_dns_hostnames = true
+  enable_dns_support   = true
+
+  tags = {
+    Name        = "text-to-sql-vpc"
+    Project     = "text-to-sql-chatbot"
+    Environment = var.environment
+  }
+}
+
+# Create Internet Gateway
+resource "aws_internet_gateway" "text_to_sql_igw" {
+  vpc_id = aws_vpc.text_to_sql_vpc.id
+
+  tags = {
+    Name    = "text-to-sql-igw"
+    Project = "text-to-sql-chatbot"
+  }
+}
+
+# Create Public Subnets
+resource "aws_subnet" "public_subnets" {
+  count = length(var.public_subnet_cidrs)
+
+  vpc_id                  = aws_vpc.text_to_sql_vpc.id
+  cidr_block              = var.public_subnet_cidrs[count.index]
+  availability_zone       = var.availability_zones[count.index]
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name    = "text-to-sql-public-${count.index + 1}"
+    Project = "text-to-sql-chatbot"
+    Type    = "Public"
+  }
+}
+
+# Create Private Subnets
+resource "aws_subnet" "private_subnets" {
+  count = length(var.private_subnet_cidrs)
+
+  vpc_id            = aws_vpc.text_to_sql_vpc.id
+  cidr_block        = var.private_subnet_cidrs[count.index]
+  availability_zone = var.availability_zones[count.index]
+
+  tags = {
+    Name    = "text-to-sql-private-${count.index + 1}"
+    Project = "text-to-sql-chatbot"
+    Type    = "Private"
+  }
+}
+
+# Create Public Route Table
+resource "aws_route_table" "public_rt" {
+  vpc_id = aws_vpc.text_to_sql_vpc.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.text_to_sql_igw.id
+  }
+
+  tags = {
+    Name    = "text-to-sql-public-rt"
+    Project = "text-to-sql-chatbot"
+  }
+}
+
+# Associate Public Subnets with Public Route Table
+resource "aws_route_table_association" "public_assoc" {
+  count = length(aws_subnet.public_subnets)
+
+  subnet_id      = aws_subnet.public_subnets[count.index].id
+  route_table_id = aws_route_table.public_rt.id
+}
+
+# Create NAT Gateway in Public Subnet
+resource "aws_eip" "nat_eip" {
+  domain = "vpc"
+
+  tags = {
+    Name    = "text-to-sql-nat-eip"
+    Project = "text-to-sql-chatbot"
+  }
+}
+
+resource "aws_nat_gateway" "text_to_sql_nat" {
+  allocation_id = aws_eip.nat_eip.id
+  subnet_id     = aws_subnet.public_subnets[0].id
+
+  tags = {
+    Name    = "text-to-sql-nat"
+    Project = "text-to-sql-chatbot"
+  }
+
+  depends_on = [aws_internet_gateway.text_to_sql_igw]
+}
+
+# Create Private Route Table
+resource "aws_route_table" "private_rt" {
+  vpc_id = aws_vpc.text_to_sql_vpc.id
+
+  route {
+    cidr_block     = "0.0.0.0/0"
+    nat_gateway_id = aws_nat_gateway.text_to_sql_nat.id
+  }
+
+  tags = {
+    Name    = "text-to-sql-private-rt"
+    Project = "text-to-sql-chatbot"
+  }
+}
+
+# Associate Private Subnets with Private Route Table
+resource "aws_route_table_association" "private_assoc" {
+  count = length(aws_subnet.private_subnets)
+
+  subnet_id      = aws_subnet.private_subnets[count.index].id
+  route_table_id = aws_route_table.private_rt.id
+}
+
 resource "aws_secretsmanager_secret_version" "rds_credentials" {
   secret_id = aws_secretsmanager_secret.rds_credentials.id
   secret_string = jsonencode({
