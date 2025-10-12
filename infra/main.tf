@@ -202,14 +202,22 @@ resource "aws_db_instance" "text_to_sql_db" {
 resource "aws_security_group" "rds_sg" {
   name        = "text-to-sql-rds-sg"
   description = "Security group for Text-to-SQL RDS instance"
-  vpc_id      = var.vpc_id
+  vpc_id      = aws_vpc.text_to_sql_vpc.id  # Updated to use new VPC
 
   ingress {
-    description = "PostgreSQL from anywhere (for demo)"
+    description = "PostgreSQL from VPC"
     from_port   = 5432
     to_port     = 5432
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = [aws_vpc.text_to_sql_vpc.cidr_block]  # Allow from entire VPC
+  }
+
+  ingress {
+    description = "PostgreSQL from specific IP (for external access)"
+    from_port   = 5432
+    to_port     = 5432
+    protocol    = "tcp"
+    cidr_blocks = ["YOUR_IP_ADDRESS/32"]  # Replace with your actual IP
   }
 
   egress {
