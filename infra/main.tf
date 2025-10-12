@@ -142,3 +142,59 @@ resource "aws_db_parameter_group" "text_to_sql_pg" {
   }
 }
 
+# Database initialization using local-exec provisioner
+resource "null_resource" "database_setup" {
+  depends_on = [aws_db_instance.text_to_sql_db]
+
+  triggers = {
+    rds_endpoint = aws_db_instance.text_to_sql_db.address
+  }
+
+  provisioner "local-exec" {
+    command = <<EOF
+      # Wait for RDS to be ready
+      until pg_isready -h ${aws_db_instance.text_to_sql_db.address} -p ${aws_db_instance.text_to_sql_db.port} -U ${var.rds_username}; do
+        echo "Waiting for database to be ready..."
+        sleep 10
+      done
+
+      # Connect and initialize database
+      PGPASSWORD=${random_password.rds_password.result} psql \
+        -h ${aws_db_instance.text_to_sql_db.address} \
+        -p ${aws_db_instance.text_to_sql_db.port} \
+        -U ${var.rds_username} \
+        -d ${var.rds_database_name} \
+        -c "
+          CREATE TABLE IF NOT EXISTS employees (
+            id SERIAL PRIMARY KEY,
+            name VARCHAR(100),
+            department VARCHAR(50),
+            salary DECIMAL(10,2),
+            hire_date DATE
+          );
+
+          CREATE TABLE IF NOT EXISTS departments (
+            id SERIAL PRIMARY KEY,
+            name VARCHAR(50),
+            budget DECIMAL(12,2)
+          );
+
+          INSERT INTO departments (name, budget) VALUES 
+          ('Engineering', 1000000),
+          ('Sales', 500000),
+          ('Marketing', 300000)
+          ON CONFLICT DO NOTHING;
+
+          INSERT INTO employees (name, department, salary, hire_date) VALUES
+          ('John Doe', 'Engineering', 75000, '2022-01-15'),
+          ('Jane Smith', 'Sales', 65000, '2021-03-20'),
+          ('Bob Johnson', 'Engineering', 80000, '2020-11-10'),
+          ('Alice Brown', 'Marketing', 60000, '2023-02-01')
+          ON CONFLICT DO NOTHING;
+        "
+    EOF
+
+    interpreter = ["/bin/bash", "-c"]
+  }
+}
+
