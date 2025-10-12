@@ -1,35 +1,48 @@
 variable "aws_region" {
-  description = "AWS region"
+  description = "AWS region to deploy resources"
   type        = string
   default     = "us-east-1"
 }
 
-variable "project_name" {
-  description = "Project name for resource naming"
+variable "environment" {
+  description = "Environment name"
   type        = string
-  default     = "text-to-sql-chatbot"
+  default     = "dev"
 }
 
-variable "dataset_s3_bucket" {
-  description = "S3 bucket containing the housing dataset"
+variable "vpc_id" {
+  description = "VPC ID where RDS will be deployed"
   type        = string
-  default     = "your-s3-bucket-name"  # Will be overridden by terraform.tfvars
+  default     = ""  # Set your VPC ID or use data source to get default VPC
 }
 
-variable "db_master_username" {
-  description = "Master username for RDS PostgreSQL"
+variable "rds_instance_class" {
+  description = "RDS instance class"
+  type        = string
+  default     = "db.t3.micro"
+}
+
+variable "rds_allocated_storage" {
+  description = "Allocated storage for RDS in GB"
+  type        = number
+  default     = 20
+}
+
+variable "rds_username" {
+  description = "Master username for RDS"
   type        = string
   default     = "postgres"
+  sensitive   = true
 }
 
-variable "db_password" {
-  description = "Master username for RDS PostgreSQL"
+variable "rds_database_name" {
+  description = "Initial database name"
   type        = string
-  default     = "P@ssw0rd123456789" # to be replace
+  default     = "company"
 }
 
-variable "db_name" {
-  description = "Database name"
+variable "postgres_version" {
+  description = "PostgreSQL version"
   type        = string
-  default     = "housingdb"
+  default     = "15.4"
 }
