@@ -885,9 +885,8 @@ TFVARS
 # Null resource to build Lambda packages
 resource "null_resource" "build_lambda_packages" {
   triggers = {
-    data_indexer_hash = try(filemd5("${path.module}/data_indexer.py"), "initial")
-    text_to_sql_hash  = try(filemd5("${path.module}/text_to_sql.py"), "initial")
-    requirements_hash = try(filemd5("${path.module}/requirements.txt"), "initial")
+    # Use timestamp to always rebuild, or remove triggers entirely
+    build_trigger = timestamp()
   }
 
   provisioner "local-exec" {
