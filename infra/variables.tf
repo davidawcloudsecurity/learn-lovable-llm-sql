@@ -10,6 +10,18 @@ variable "environment" {
   default     = "dev"
 }
 
+variable "ec2_instance_type" {
+  description = "EC2 instance type for RDS setup"
+  type        = string
+  default     = "t3.micro"
+}
+
+variable "key_name" {
+  description = "SSH key pair name for EC2 instance (optional)"
+  type        = string
+  default     = null
+}
+
 variable "vpc_id" {
   description = "VPC ID where RDS will be deployed"
   type        = string
