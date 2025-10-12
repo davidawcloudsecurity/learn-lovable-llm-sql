@@ -959,7 +959,7 @@ resource "aws_lambda_function" "data_indexer" {
   runtime          = "python3.12"
   timeout          = 900
   memory_size      = 512
-  source_code_hash = filebase64sha256("data_indexer.zip")
+  source_code_hash = fileexists("data_indexer.zip") ? filebase64sha256("data_indexer.zip") : null
 
   vpc_config {
     subnet_ids         = aws_subnet.private[*].id
