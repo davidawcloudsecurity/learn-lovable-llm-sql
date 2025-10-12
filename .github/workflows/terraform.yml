@@ -82,7 +82,7 @@ jobs:
         
       - name: Terraform Plan
         run: |
-          terraform force-unlock 042e2af2-2365-b42d-59ce-0b41b5d85299        
+          echo "yes" | terraform force-unlock 042e2af2-2365-b42d-59ce-0b41b5d85299
           terraform plan
         working-directory: infra
 
