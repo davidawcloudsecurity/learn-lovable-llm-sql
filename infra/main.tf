@@ -278,6 +278,152 @@ resource "aws_db_parameter_group" "text_to_sql_pg" {
   }
 }
 
+# IAM Role for EC2 Instance
+resource "aws_iam_role" "ec2_rds_access_role" {
+  name = "text-to-sql-ec2-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+      }
+    ]
+  })
+
+  tags = {
+    Project = "text-to-sql-chatbot"
+  }
+}
+
+# IAM Policy for RDS and Secrets Manager access
+resource "aws_iam_policy" "ec2_rds_policy" {
+  name        = "text-to-sql-ec2-rds-policy"
+  description = "Policy for EC2 to access RDS and Secrets Manager"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:GetSecretValue",
+          "secretsmanager:DescribeSecret"
+        ]
+        Resource = aws_secretsmanager_secret.rds_credentials.arn
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "rds:DescribeDBInstances",
+          "rds:Connect"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents",
+          "logs:DescribeLogStreams"
+        ]
+        Resource = "arn:aws:logs:*:*:*"
+      }
+    ]
+  })
+}
+
+# Attach policies to role
+resource "aws_iam_role_policy_attachment" "ec2_rds_policy_attach" {
+  role       = aws_iam_role.ec2_rds_access_role.name
+  policy_arn = aws_iam_policy.ec2_rds_policy.arn
+}
+
+resource "aws_iam_role_policy_attachment" "ec2_ssm_policy_attach" {
+  role       = aws_iam_role.ec2_rds_access_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
+# IAM Instance Profile
+resource "aws_iam_instance_profile" "ec2_instance_profile" {
+  name = "text-to-sql-ec2-instance-profile"
+  role = aws_iam_role.ec2_rds_access_role.name
+}
+
+# Security Group for EC2 instance
+resource "aws_security_group" "ec2_sg" {
+  name        = "text-to-sql-ec2-sg"
+  description = "Security group for Text-to-SQL EC2 instance"
+  vpc_id      = aws_vpc.text_to_sql_vpc.id
+
+  ingress {
+    description = "SSH from user's IP"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["${local.current_ip}/32"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name    = "text-to-sql-ec2-sg"
+    Project = "text-to-sql-chatbot"
+  }
+}
+
+# EC2 Instance
+resource "aws_instance" "rds_setup_instance" {
+  ami                  = data.aws_ami.amazon_linux_2.id
+  instance_type        = "t3.micro"
+  subnet_id           = aws_subnet.public_subnets[0].id
+  vpc_security_group_ids = [aws_security_group.ec2_sg.id]
+  iam_instance_profile = aws_iam_instance_profile.ec2_instance_profile.name
+
+  user_data = base64encode(templatefile("${path.module}/user_data.sh", {
+    rds_secret_arn = aws_secretsmanager_secret.rds_credentials.arn
+    region         = var.aws_region
+  }))
+
+  tags = {
+    Name        = "text-to-sql-rds-setup"
+    Project     = "text-to-sql-chatbot"
+    Environment = var.environment
+  }
+
+  depends_on = [
+    aws_db_instance.text_to_sql_db,
+    aws_secretsmanager_secret_version.rds_credentials
+  ]
+}
+
+# Get latest Amazon Linux 2 AMI
+data "aws_ami" "amazon_linux_2" {
+  most_recent = true
+  owners      = ["amazon"]
+
+  filter {
+    name   = "name"
+    values = ["amzn2-ami-hvm-*-x86_64-gp2"]
+  }
+
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+}
+
+/* Remove 
 # Database initialization using local-exec provisioner
 resource "null_resource" "database_setup" {
   depends_on = [aws_db_instance.text_to_sql_db]
@@ -333,4 +479,4 @@ resource "null_resource" "database_setup" {
     interpreter = ["/bin/bash", "-c"]
   }
 }
-
+*/
