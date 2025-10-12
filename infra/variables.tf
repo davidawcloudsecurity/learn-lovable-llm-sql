@@ -44,7 +44,7 @@ variable "rds_database_name" {
 variable "postgres_version" {
   description = "PostgreSQL version"
   type        = string
-  default     = "15.4"
+  default     = "17.4"
 }
 
 variable "public_subnet_cidrs" {
