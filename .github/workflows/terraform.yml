@@ -82,7 +82,7 @@ jobs:
         
       - name: Terraform Plan
         run: |
-          terraform plan
+          terraform plan -lock=false
         working-directory: infra
 
       - name: Terraform Apply or Destroy
