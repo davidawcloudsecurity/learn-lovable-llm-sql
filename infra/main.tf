@@ -425,6 +425,436 @@ resource "aws_iam_role_policy" "lambda_policy" {
   })
 }
 
+# Null resource to create required Python files
+resource "null_resource" "create_python_files" {
+  triggers = {
+    always_run = timestamp()
+  }
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      # Create data_indexer.py if it doesn't exist
+      if [ ! -f data_indexer.py ]; then
+        echo "Creating data_indexer.py..."
+        cat > data_indexer.py << 'PYFILE'
+import json
+import os
+import boto3
+import psycopg2
+from psycopg2.extras import execute_values
+
+bedrock_runtime = boto3.client('bedrock-runtime', region_name=os.environ.get('AWS_REGION', 'us-west-2'))
+secretsmanager = boto3.client('secretsmanager', region_name=os.environ.get('AWS_REGION', 'us-west-2'))
+
+def get_db_connection():
+    secret_name = os.environ['SECRET_NAME']
+    response = secretsmanager.get_secret_value(SecretId=secret_name)
+    secret = json.loads(response['SecretString'])
+    conn = psycopg2.connect(
+        host=secret['host'],
+        database=secret['dbname'],
+        user=secret['username'],
+        password=secret['password'],
+        port=secret.get('port', 5432)
+    )
+    return conn
+
+def create_embeddings_table(cursor):
+    cursor.execute("CREATE EXTENSION IF NOT EXISTS vector;")
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS table_embeddings (
+            id SERIAL PRIMARY KEY,
+            table_name VARCHAR(255),
+            table_description TEXT,
+            embedding vector(1536),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+    """)
+    cursor.execute("""
+        CREATE INDEX IF NOT EXISTS idx_table_embeddings_vector 
+        ON table_embeddings USING ivfflat (embedding vector_cosine_ops)
+        WITH (lists = 100);
+    """)
+
+def get_table_metadata(cursor):
+    cursor.execute("""
+        SELECT 
+            t.table_name,
+            array_agg(
+                c.column_name || ' (' || c.data_type || 
+                CASE WHEN c.is_nullable = 'NO' THEN ' NOT NULL' ELSE '' END || ')'
+                ORDER BY c.ordinal_position
+            ) as columns
+        FROM information_schema.tables t
+        JOIN information_schema.columns c 
+            ON t.table_name = c.table_name 
+            AND t.table_schema = c.table_schema
+        WHERE t.table_schema = 'public'
+            AND t.table_type = 'BASE TABLE'
+            AND t.table_name != 'table_embeddings'
+        GROUP BY t.table_name;
+    """)
+    return cursor.fetchall()
+
+def generate_table_description(table_name, columns):
+    column_list = ', '.join(columns)
+    description = f"Table: {table_name}. Columns: {column_list}"
+    return description
+
+def get_embedding(text):
+    body = json.dumps({"inputText": text})
+    response = bedrock_runtime.invoke_model(
+        modelId='amazon.titan-embed-text-v1',
+        body=body,
+        contentType='application/json',
+        accept='application/json'
+    )
+    response_body = json.loads(response['body'].read())
+    return response_body['embedding']
+
+def store_embeddings(cursor, table_name, description, embedding):
+    cursor.execute("DELETE FROM table_embeddings WHERE table_name = %s;", (table_name,))
+    cursor.execute("""
+        INSERT INTO table_embeddings (table_name, table_description, embedding)
+        VALUES (%s, %s, %s);
+    """, (table_name, description, embedding))
+
+def handler(event, context):
+    print("Starting data indexer function")
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        print("Creating embeddings table if needed")
+        create_embeddings_table(cursor)
+        conn.commit()
+        print("Retrieving table metadata")
+        tables_metadata = get_table_metadata(cursor)
+        print(f"Found {len(tables_metadata)} tables to process")
+        embeddings_created = 0
+        for table_name, columns in tables_metadata:
+            print(f"Processing table: {table_name}")
+            description = generate_table_description(table_name, columns)
+            print(f"Description: {description}")
+            embedding = get_embedding(description)
+            print(f"Generated embedding with dimension: {len(embedding)}")
+            store_embeddings(cursor, table_name, description, embedding)
+            embeddings_created += 1
+            print(f"Stored embedding for table: {table_name}")
+        conn.commit()
+        print(f"Successfully created {embeddings_created} embeddings")
+        return {
+            'statusCode': 200,
+            'body': json.dumps({
+                'message': f'Successfully indexed {embeddings_created} tables',
+                'tables_processed': embeddings_created
+            })
+        }
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        if conn:
+            conn.rollback()
+        raise e
+    finally:
+        if conn:
+            cursor.close()
+            conn.close()
+PYFILE
+      fi
+
+      # Create text_to_sql.py if it doesn't exist
+      if [ ! -f text_to_sql.py ]; then
+        echo "Creating text_to_sql.py..."
+        cat > text_to_sql.py << 'PYFILE'
+import json
+import os
+import boto3
+import psycopg2
+import redis
+import hashlib
+from psycopg2.extras import RealDictCursor
+
+bedrock_runtime = boto3.client('bedrock-runtime', region_name=os.environ.get('AWS_REGION', 'us-west-2'))
+secretsmanager = boto3.client('secretsmanager', region_name=os.environ.get('AWS_REGION', 'us-west-2'))
+redis_client = None
+
+def get_redis_client():
+    global redis_client
+    if redis_client is None:
+        redis_client = redis.Redis(
+            host=os.environ['MEMORYDB_ENDPOINT'],
+            port=6379,
+            decode_responses=True,
+            socket_connect_timeout=5
+        )
+    return redis_client
+
+def get_db_connection():
+    secret_name = os.environ['SECRET_NAME']
+    response = secretsmanager.get_secret_value(SecretId=secret_name)
+    secret = json.loads(response['SecretString'])
+    conn = psycopg2.connect(
+        host=secret['host'],
+        database=secret['dbname'],
+        user=secret['username'],
+        password=secret['password'],
+        port=secret.get('port', 5432)
+    )
+    return conn
+
+def get_embedding(text):
+    body = json.dumps({"inputText": text})
+    response = bedrock_runtime.invoke_model(
+        modelId='amazon.titan-embed-text-v1',
+        body=body,
+        contentType='application/json',
+        accept='application/json'
+    )
+    response_body = json.loads(response['body'].read())
+    return response_body['embedding']
+
+def check_semantic_cache(query, threshold=0.95):
+    try:
+        redis_conn = get_redis_client()
+        query_hash = hashlib.sha256(query.encode()).hexdigest()
+        cached_result = redis_conn.get(f"exact:{query_hash}")
+        if cached_result:
+            print("Cache hit: exact match")
+            return json.loads(cached_result)
+        return None
+    except Exception as e:
+        print(f"Cache check error: {str(e)}")
+        return None
+
+def store_in_cache(query, result):
+    try:
+        redis_conn = get_redis_client()
+        query_hash = hashlib.sha256(query.encode()).hexdigest()
+        redis_conn.setex(f"exact:{query_hash}", 3600, json.dumps(result))
+        print("Stored result in cache")
+    except Exception as e:
+        print(f"Cache storage error: {str(e)}")
+
+def find_relevant_tables(cursor, user_query, top_k=3):
+    query_embedding = get_embedding(user_query)
+    cursor.execute("""
+        SELECT 
+            table_name,
+            table_description,
+            1 - (embedding <=> %s::vector) as similarity
+        FROM table_embeddings
+        ORDER BY embedding <=> %s::vector
+        LIMIT %s;
+    """, (query_embedding, query_embedding, top_k))
+    return cursor.fetchall()
+
+def get_table_schema(cursor, table_names):
+    cursor.execute("""
+        SELECT 
+            c.table_name,
+            c.column_name,
+            c.data_type,
+            c.is_nullable,
+            c.column_default
+        FROM information_schema.columns c
+        WHERE c.table_schema = 'public'
+            AND c.table_name = ANY(%s)
+        ORDER BY c.table_name, c.ordinal_position;
+    """, (table_names,))
+    return cursor.fetchall()
+
+def generate_sql_query(user_query, table_schemas):
+    schema_context = "Database Schema:\n"
+    for table_name, columns in table_schemas.items():
+        schema_context += f"\nTable: {table_name}\n"
+        for col in columns:
+            schema_context += f"  - {col['column_name']} ({col['data_type']})\n"
+    
+    prompt = f"""You are a SQL expert. Generate a PostgreSQL query based on the user's question.
+
+{schema_context}
+
+User Question: {user_query}
+
+Important Instructions:
+1. Generate ONLY a parameterized SQL query using $1, $2, etc. for any literal values
+2. Return the SQL query and the parameter values separately
+3. Use only SELECT statements (read-only)
+4. Do not use DROP, DELETE, UPDATE, INSERT, or any write operations
+5. Format your response as JSON with keys: "sql" and "parameters"
+
+Example response format:
+{{
+    "sql": "SELECT * FROM properties WHERE city = $1 AND price < $2",
+    "parameters": ["San Francisco", 1000000]
+}}
+
+Generate the SQL query now:"""
+
+    body = json.dumps({
+        "anthropic_version": "bedrock-2023-05-31",
+        "max_tokens": 2000,
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.1
+    })
+    
+    response = bedrock_runtime.invoke_model(
+        modelId='anthropic.claude-3-5-sonnet-20241022-v2:0',
+        body=body,
+        contentType='application/json',
+        accept='application/json'
+    )
+    
+    response_body = json.loads(response['body'].read())
+    sql_response = response_body['content'][0]['text']
+    
+    if "```json" in sql_response:
+        sql_response = sql_response.split("```json")[1].split("```")[0].strip()
+    elif "```" in sql_response:
+        sql_response = sql_response.split("```")[1].split("```")[0].strip()
+    
+    return json.loads(sql_response)
+
+def execute_query(cursor, sql, parameters):
+    cursor.execute(sql, parameters)
+    return cursor.fetchall()
+
+def interpret_results(user_query, sql, results):
+    sample_results = results[:10] if len(results) > 10 else results
+    prompt = f"""You are a helpful data analyst. Interpret the following SQL query results for the user.
+
+User Question: {user_query}
+
+SQL Query: {sql}
+
+Query Results (showing {len(sample_results)} of {len(results)} rows):
+{json.dumps(sample_results, indent=2, default=str)}
+
+Provide a clear, concise natural language summary of these results that answers the user's question.
+Focus on the key insights and relevant data points."""
+
+    body = json.dumps({
+        "anthropic_version": "bedrock-2023-05-31",
+        "max_tokens": 1000,
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.3
+    })
+    
+    response = bedrock_runtime.invoke_model(
+        modelId='anthropic.claude-3-5-sonnet-20241022-v2:0',
+        body=body,
+        contentType='application/json',
+        accept='application/json'
+    )
+    
+    response_body = json.loads(response['body'].read())
+    return response_body['content'][0]['text']
+
+def handler(event, context):
+    print(f"Received event: {json.dumps(event)}")
+    try:
+        if 'body' in event:
+            body = json.loads(event['body']) if isinstance(event['body'], str) else event['body']
+        else:
+            body = event
+        
+        user_query = body.get('query', '')
+        if not user_query:
+            return {
+                'statusCode': 400,
+                'body': json.dumps({'error': 'Query parameter is required'})
+            }
+        
+        print(f"Processing query: {user_query}")
+        cached_result = check_semantic_cache(user_query)
+        if cached_result:
+            return {
+                'statusCode': 200,
+                'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                'body': json.dumps({'cached': True, **cached_result})
+            }
+        
+        conn = get_db_connection()
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        
+        print("Finding relevant tables")
+        relevant_tables = find_relevant_tables(cursor, user_query)
+        table_names = [row['table_name'] for row in relevant_tables]
+        print(f"Relevant tables: {table_names}")
+        
+        schema_rows = get_table_schema(cursor, table_names)
+        table_schemas = {}
+        for row in schema_rows:
+            table_name = row[0]
+            if table_name not in table_schemas:
+                table_schemas[table_name] = []
+            table_schemas[table_name].append({
+                'column_name': row[1],
+                'data_type': row[2],
+                'is_nullable': row[3],
+                'column_default': row[4]
+            })
+        
+        print("Generating SQL query")
+        sql_data = generate_sql_query(user_query, table_schemas)
+        sql_query = sql_data['sql']
+        parameters = sql_data.get('parameters', [])
+        print(f"Generated SQL: {sql_query}")
+        
+        print("Executing query")
+        results = execute_query(cursor, sql_query, parameters)
+        results_list = [dict(row) for row in results]
+        print(f"Retrieved {len(results_list)} rows")
+        
+        print("Interpreting results")
+        interpretation = interpret_results(user_query, sql_query, results_list)
+        
+        response_data = {
+            'query': user_query,
+            'sql': sql_query,
+            'parameters': parameters,
+            'results': results_list,
+            'interpretation': interpretation,
+            'row_count': len(results_list)
+        }
+        
+        store_in_cache(user_query, response_data)
+        cursor.close()
+        conn.close()
+        
+        return {
+            'statusCode': 200,
+            'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+            'body': json.dumps({'cached': False, **response_data}, default=str)
+        }
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return {
+            'statusCode': 500,
+            'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+            'body': json.dumps({'error': str(e)})
+        }
+PYFILE
+      fi
+
+      # Create requirements.txt if it doesn't exist
+      if [ ! -f requirements.txt ]; then
+        echo "Creating requirements.txt..."
+        cat > requirements.txt << 'REQFILE'
+psycopg2-binary==2.9.9
+redis==5.0.1
+boto3==1.34.34
+botocore==1.34.34
+REQFILE
+      fi
+
+      echo "All required Python files created."
+    EOT
+  }
+}
+
 # Null resource to create terraform.tfvars if it doesn't exist
 resource "null_resource" "create_tfvars" {
   triggers = {
@@ -448,15 +878,16 @@ TFVARS
       fi
     EOT
   }
+
+  depends_on = [null_resource.create_python_files]
 }
 
 # Null resource to build Lambda packages
 resource "null_resource" "build_lambda_packages" {
   triggers = {
-    data_indexer_hash = filemd5("${path.module}/data_indexer.py")
-    text_to_sql_hash  = filemd5("${path.module}/text_to_sql.py")
-    requirements_hash = filemd5("${path.module}/requirements.txt")
-    always_run        = timestamp()
+    data_indexer_hash = try(filemd5("${path.module}/data_indexer.py"), "initial")
+    text_to_sql_hash  = try(filemd5("${path.module}/text_to_sql.py"), "initial")
+    requirements_hash = try(filemd5("${path.module}/requirements.txt"), "initial")
   }
 
   provisioner "local-exec" {
