@@ -167,5 +167,15 @@ jobs:
           echo "Check if rds-monitoring-role exist"
           if [ -n "$(aws iam list-roles --query 'Roles[*].RoleName' | grep -i rds-monitoring-role | sed 's/[",]//g')" ]; then
             aws iam delete-role --role-name $(aws iam list-roles --query 'Roles[*].RoleName' | grep -i rds-monitoring-role | sed 's/[",]//g')
-          fi          
+          fi
+          echo "Try to get lock ID from error output"
+          terraform plan -lock-timeout=1s 2>&1 | grep "ID:" | awk '{print $2}' | head -1 > lock_id.txt
+          LOCK_ID=$(cat lock_id.txt)
+          
+          if [ ! -z "$LOCK_ID" ] && [ "$LOCK_ID" != "ID:" ]; then
+            echo "Clearing lock: $LOCK_ID"
+            terraform force-unlock -force $LOCK_ID
+          else
+            echo "No lock found or using known ID"
+          fi
         working-directory: infra
