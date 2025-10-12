@@ -233,6 +233,17 @@ resource "aws_security_group" "rds_sg" {
   }
 }
 
+# Update RDS instance to use private subnets
+resource "aws_db_subnet_group" "text_to_sql_db_subnet_group" {
+  name       = "text-to-sql-db-subnet-group"
+  subnet_ids = aws_subnet.private_subnets[*].id  # Use private subnets for RDS
+
+  tags = {
+    Name    = "text-to-sql-db-subnet-group"
+    Project = "text-to-sql-chatbot"
+  }
+}
+
 # IAM Role for RDS Enhanced Monitoring
 resource "aws_iam_role" "rds_monitoring" {
   name = "rds-monitoring-role"
