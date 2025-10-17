@@ -71,20 +71,20 @@ jobs:
         
       - name: Terraform Init
         run: terraform init
-        working-directory: infra        
+        working-directory: amplify        
         
       - name: Terraform Validate
         run: terraform validate
-        working-directory: infra
+        working-directory: amplify
         
       - name: Terraform Format
         run: terraform fmt -recursive
-        working-directory: infra      
+        working-directory: amplify      
 
       - name: Terraform Plan
         run: |
           terraform plan
-        working-directory: infra
+        working-directory: amplify
 
       - name: Terraform Apply or Destroy
         run: |
@@ -136,7 +136,7 @@ jobs:
             echo "Displaying Terraform outputs..."
             terraform output            
           fi
-        working-directory: infra
+        working-directory: amplify
 
       - name: Terraform Destroy on Failure
         if: failure()
@@ -180,4 +180,4 @@ jobs:
           else
             echo "No lock found or using known ID"
           fi
-        working-directory: infra
+        working-directory: amplify
