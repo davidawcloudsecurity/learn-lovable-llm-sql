@@ -1,0 +1,4 @@
+aws_region = "us-east-1"
+environment = "production"
+github_repository = "https://github.com/yourusername/learn-lovable-llm-sql"
+custom_domain = "yourdomain.com"  # Optional - leave empty if not using custom domain
