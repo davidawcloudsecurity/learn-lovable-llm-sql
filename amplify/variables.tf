@@ -10,9 +10,10 @@ variable "environment" {
   default     = "production"
 }
 
-variable "github_repository" {
-  description = "GitHub repository URL (https://github.com/username/repo)"
+variable "project_name" {
+  description = "Project name for resource naming"
   type        = string
+  default     = "text-to-sql"
 }
 
 variable "custom_domain" {
