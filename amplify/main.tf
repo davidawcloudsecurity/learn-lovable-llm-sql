@@ -4,10 +4,6 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
-    random = {
-      source  = "hashicorp/random"
-      version = "~> 3.0"
-    }
   }
 }
 
@@ -15,41 +11,40 @@ provider "aws" {
   region = var.aws_region
 }
 
-# S3 bucket for build artifacts
-resource "aws_s3_bucket" "build_artifacts" {
-  bucket = "${var.project_name}-build-artifacts-${random_id.bucket_suffix.hex}"
-
-  tags = {
-    Name        = "build-artifacts"
-    Environment = var.environment
-  }
-}
-
-resource "random_id" "bucket_suffix" {
-  byte_length = 4
-}
-
-# Build and upload to S3
-resource "null_resource" "build_and_upload" {
-  triggers = {
-    always_run = timestamp()
-  }
-
-  provisioner "local-exec" {
-    command = <<-EOT
-      cd ..
-      npm ci
-      npm run build
-      aws s3 sync dist/ s3://${aws_s3_bucket.build_artifacts.bucket}/
-    EOT
-  }
-
-  depends_on = [aws_s3_bucket.build_artifacts]
-}
-
-# Amplify App (without repository)
+# Amplify App
 resource "aws_amplify_app" "text_to_sql_app" {
-  name = "text-to-sql-platform"
+  name         = "text-to-sql-platform"
+  repository   = var.github_repository
+  access_token = var.github_access_token
+
+  # Build settings for Vite React app
+  build_spec = <<-EOT
+    version: 1
+    frontend:
+      phases:
+        preBuild:
+          commands:
+            - npm ci
+        build:
+          commands:
+            - npm run build
+      artifacts:
+        baseDirectory: dist
+        files:
+          - '**/*'
+      cache:
+        paths:
+          - node_modules/**/*
+  EOT
+
+  # Environment variables for the app
+  environment_variables = {
+    AMPLIFY_DIFF_DEPLOY = "false"
+    AMPLIFY_MONOREPO_APP_ROOT = "."
+  }
+
+  enable_branch_auto_build = true
+  enable_branch_auto_deletion = true
 
   tags = {
     Name        = "text-to-sql-platform"
@@ -65,8 +60,27 @@ resource "aws_amplify_branch" "main" {
   framework = "React"
   stage     = "PRODUCTION"
 
+  enable_auto_build = true
+
   tags = {
     Name        = "main-branch"
     Environment = var.environment
+  }
+}
+
+# Custom domain (optional)
+resource "aws_amplify_domain_association" "custom_domain" {
+  count       = var.custom_domain != "" ? 1 : 0
+  app_id      = aws_amplify_app.text_to_sql_app.id
+  domain_name = var.custom_domain
+
+  sub_domain {
+    branch_name = aws_amplify_branch.main.branch_name
+    prefix      = ""
+  }
+
+  sub_domain {
+    branch_name = aws_amplify_branch.main.branch_name
+    prefix      = "www"
   }
 }
