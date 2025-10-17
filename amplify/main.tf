@@ -13,9 +13,10 @@ provider "aws" {
 
 # Amplify App
 resource "aws_amplify_app" "text_to_sql_app" {
-  name         = "text-to-sql-platform"
-  repository   = var.github_repository
-  access_token = var.github_access_token
+  name       = "text-to-sql-platform"
+  repository = var.github_repository
+  # Remove or comment out the access_token line
+  # access_token = var.github_access_token
 
   # Build settings for Vite React app
   build_spec = <<-EOT
@@ -37,14 +38,13 @@ resource "aws_amplify_app" "text_to_sql_app" {
           - node_modules/**/*
   EOT
 
-  # Environment variables for the app
   environment_variables = {
-    AMPLIFY_DIFF_DEPLOY = "false"
-    AMPLIFY_MONOREPO_APP_ROOT = "."
+    AMPLIFY_DIFF_DEPLOY         = "false"
+    AMPLIFY_MONOREPO_APP_ROOT   = "."
   }
 
-  enable_branch_auto_build = true
-  enable_branch_auto_deletion = true
+  enable_branch_auto_build     = true
+  enable_branch_auto_deletion  = true
 
   tags = {
     Name        = "text-to-sql-platform"
