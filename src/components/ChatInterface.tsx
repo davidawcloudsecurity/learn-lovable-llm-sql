@@ -25,6 +25,45 @@ const ChatInterface = () => {
     "List employees with salary above average in the sales department",
   ];
 
+  const generateSQLResponse = (query: string): string => {
+    if (query.toLowerCase().includes("customers") && query.toLowerCase().includes("30 days")) {
+      return `SELECT customer_id, customer_name, purchase_date, total_amount
+FROM customers c
+JOIN orders o ON c.customer_id = o.customer_id
+WHERE o.purchase_date >= DATE_SUB(CURRENT_DATE, INTERVAL 30 DAY)
+ORDER BY o.purchase_date DESC;`;
+    }
+    
+    if (query.toLowerCase().includes("top 10") && query.toLowerCase().includes("products")) {
+      return `SELECT p.product_name, SUM(oi.quantity * oi.price) as total_revenue
+FROM products p
+JOIN order_items oi ON p.product_id = oi.product_id
+JOIN orders o ON oi.order_id = o.order_id
+WHERE MONTH(o.order_date) = MONTH(CURRENT_DATE)
+GROUP BY p.product_id, p.product_name
+ORDER BY total_revenue DESC
+LIMIT 10;`;
+    }
+    
+    if (query.toLowerCase().includes("employees") && query.toLowerCase().includes("salary")) {
+      return `SELECT employee_id, employee_name, salary, department
+FROM employees
+WHERE department = 'sales'
+AND salary > (
+  SELECT AVG(salary)
+  FROM employees
+  WHERE department = 'sales'
+)
+ORDER BY salary DESC;`;
+    }
+    
+    // Default response for other queries
+    return `SELECT *
+FROM your_table
+WHERE condition_based_on_your_query
+ORDER BY relevant_column;`;
+  };
+
   const handleSubmit = async (queryText?: string) => {
     const query = queryText || input.trim();
     if (!query) return;
@@ -46,11 +85,7 @@ const ChatInterface = () => {
         id: (Date.now() + 1).toString(),
         type: "assistant",
         text: "I've converted your question into an SQL query:",
-        sql: `SELECT customer_id, customer_name, purchase_date, total_amount
-FROM customers c
-JOIN orders o ON c.customer_id = o.customer_id
-WHERE o.purchase_date >= DATE_SUB(CURRENT_DATE, INTERVAL 30 DAY)
-ORDER BY o.purchase_date DESC;`,
+        sql: generateSQLResponse(query),
       };
       setMessages((prev) => [...prev, assistantMessage]);
       setIsLoading(false);
