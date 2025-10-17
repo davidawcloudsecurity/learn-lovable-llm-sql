@@ -13,8 +13,7 @@ provider "aws" {
 
 # Amplify App
 resource "aws_amplify_app" "text_to_sql_app" {
-  name       = "text-to-sql-platform"
-  repository = var.github_repository
+  name = "text-to-sql-platform"
 
   # Build settings for Vite React app
   build_spec = <<-EOT
@@ -42,9 +41,7 @@ resource "aws_amplify_app" "text_to_sql_app" {
     AMPLIFY_MONOREPO_APP_ROOT = "."
   }
 
-  # Enable auto branch creation from repo
-  enable_branch_auto_build = true
-  enable_branch_auto_deletion = true
+
 
   tags = {
     Name        = "text-to-sql-platform"
