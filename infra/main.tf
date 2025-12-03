@@ -300,10 +300,10 @@ resource "aws_iam_role" "ec2_rds_access_role" {
   }
 }
 
-# IAM Policy for RDS and Secrets Manager access
+# IAM Policy for RDS, Secrets Manager, and Bedrock access
 resource "aws_iam_policy" "ec2_rds_policy" {
   name        = "text-to-sql-ec2-rds-policy"
-  description = "Policy for EC2 to access RDS and Secrets Manager"
+  description = "Policy for EC2 to access RDS, Secrets Manager, and Bedrock"
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -333,6 +333,14 @@ resource "aws_iam_policy" "ec2_rds_policy" {
           "logs:DescribeLogStreams"
         ]
         Resource = "arn:aws:logs:*:*:*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "bedrock:InvokeModel",
+          "bedrock:InvokeModelWithResponseStream"
+        ]
+        Resource = "arn:aws:bedrock:*::foundation-model/anthropic.*"
       }
     ]
   })
