@@ -44,8 +44,8 @@ jobs:
       - name: Create S3 Bucket
         run: |
           # S3 Bucket
-          if ! aws s3api head-bucket --bucket learn-lovable-llm-sql-terraform-state 2>/dev/null; then
-            aws s3api create-bucket --bucket learn-lovable-llm-sql-terraform-state --region $AWS_REGION
+          if ! aws s3api head-bucket --bucket learn-lovable-llm-sql-tfm-state 2>/dev/null; then
+            aws s3api create-bucket --bucket learn-lovable-llm-sql-tfm-state --region $AWS_REGION
           else
             echo "S3 bucket already exists"     
           fi
