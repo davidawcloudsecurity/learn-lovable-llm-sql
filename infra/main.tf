@@ -71,13 +71,6 @@ resource "aws_security_group" "frontend_sg" {
   vpc_id      = aws_vpc.main_vpc.id
 
   ingress {
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
@@ -108,13 +101,6 @@ resource "aws_security_group" "backend_sg" {
   name        = "backend-sg"
   description = "Security group for backend EC2"
   vpc_id      = aws_vpc.main_vpc.id
-
-  ingress {
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
 
   ingress {
     from_port   = 8000
@@ -179,7 +165,6 @@ resource "aws_instance" "frontend" {
   instance_type          = "t3.small"
   subnet_id              = aws_subnet.public_subnet.id
   vpc_security_group_ids = [aws_security_group.frontend_sg.id]
-  key_name               = var.key_name
 
   user_data = <<-EOF
               #!/bin/bash
@@ -220,7 +205,6 @@ resource "aws_instance" "backend" {
   subnet_id              = aws_subnet.public_subnet.id
   vpc_security_group_ids = [aws_security_group.backend_sg.id]
   iam_instance_profile   = aws_iam_instance_profile.backend_profile.name
-  key_name               = var.key_name
 
   user_data = <<-EOF
               #!/bin/bash

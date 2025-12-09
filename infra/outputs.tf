@@ -23,13 +23,24 @@ output "backend_api_url" {
   value       = "http://${aws_instance.backend.public_ip}:8000"
 }
 
-output "ssh_frontend" {
-  description = "SSH command for frontend"
-  value       = "ssh -i ${var.key_name}.pem ubuntu@${aws_instance.frontend.public_ip}"
+output "frontend_instance_id" {
+  description = "Frontend instance ID for SSM"
+  value       = aws_instance.frontend.id
 }
 
-output "ssh_backend" {
-  description = "SSH command for backend"
-  value       = "ssh -i ${var.key_name}.pem ubuntu@${aws_instance.backend.public_ip}"
+output "backend_instance_id" {
+  description = "Backend instance ID for SSM"
+  value       = aws_instance.backend.id
 }
+
+output "ssm_connect_frontend" {
+  description = "SSM command to connect to frontend"
+  value       = "aws ssm start-session --target ${aws_instance.frontend.id}"
+}
+
+output "ssm_connect_backend" {
+  description = "SSM command to connect to backend"
+  value       = "aws ssm start-session --target ${aws_instance.backend.id}"
+}
+
 
