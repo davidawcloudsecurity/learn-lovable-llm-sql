@@ -64,15 +64,29 @@ resource "aws_route_table_association" "public_assoc" {
   route_table_id = aws_route_table.public_rt.id
 }
 
-# Security Group for EC2 instances
-resource "aws_security_group" "ec2_sg" {
-  name        = "ec2-sg"
-  description = "Security group for EC2 instances"
+# Security Group for Frontend (React)
+resource "aws_security_group" "frontend_sg" {
+  name        = "frontend-sg"
+  description = "Security group for frontend EC2"
   vpc_id      = aws_vpc.main_vpc.id
 
   ingress {
     from_port   = 22
     to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 5173
+    to_port     = 5173
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
@@ -85,20 +99,152 @@ resource "aws_security_group" "ec2_sg" {
   }
 
   tags = {
-    Name = "ec2-sg"
+    Name = "frontend-sg"
   }
 }
 
-# EC2 Instances
-resource "aws_instance" "linux_instance" {
-  count                  = 2
-  ami                    = data.aws_ami.ubuntu.id
-  instance_type          = "t3.micro"
-  subnet_id              = aws_subnet.public_subnet.id
-  vpc_security_group_ids = [aws_security_group.ec2_sg.id]
+# Security Group for Backend (Node.js)
+resource "aws_security_group" "backend_sg" {
+  name        = "backend-sg"
+  description = "Security group for backend EC2"
+  vpc_id      = aws_vpc.main_vpc.id
+
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 8000
+    to_port     = 8000
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 
   tags = {
-    Name = "ubuntu-instance-${count.index + 1}"
+    Name = "backend-sg"
+  }
+}
+
+# IAM Role for Backend (Bedrock access)
+resource "aws_iam_role" "backend_role" {
+  name = "backend-bedrock-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = {
+        Service = "ec2.amazonaws.com"
+      }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "bedrock_policy" {
+  name = "bedrock-access"
+  role = aws_iam_role.backend_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "bedrock:InvokeModel",
+        "bedrock:InvokeModelWithResponseStream"
+      ]
+      Resource = "*"
+    }]
+  })
+}
+
+resource "aws_iam_instance_profile" "backend_profile" {
+  name = "backend-instance-profile"
+  role = aws_iam_role.backend_role.name
+}
+
+# Frontend EC2 Instance
+resource "aws_instance" "frontend" {
+  ami                    = data.aws_ami.ubuntu.id
+  instance_type          = "t3.small"
+  subnet_id              = aws_subnet.public_subnet.id
+  vpc_security_group_ids = [aws_security_group.frontend_sg.id]
+  key_name               = var.key_name
+
+  user_data = <<-EOF
+              #!/bin/bash
+              apt update
+              apt install -y nodejs npm nginx git
+              
+              # Clone repo (replace with your repo URL)
+              cd /home/ubuntu
+              # git clone <your-repo-url> app
+              # cd app
+              # npm install
+              # npm run build
+              
+              # Configure nginx to serve React app
+              cat > /etc/nginx/sites-available/default <<'NGINX'
+              server {
+                listen 80;
+                root /home/ubuntu/app/dist;
+                index index.html;
+                location / {
+                  try_files $uri $uri/ /index.html;
+                }
+              }
+              NGINX
+              
+              systemctl restart nginx
+              EOF
+
+  tags = {
+    Name = "frontend-instance"
+  }
+}
+
+# Backend EC2 Instance
+resource "aws_instance" "backend" {
+  ami                    = data.aws_ami.ubuntu.id
+  instance_type          = "t3.small"
+  subnet_id              = aws_subnet.public_subnet.id
+  vpc_security_group_ids = [aws_security_group.backend_sg.id]
+  iam_instance_profile   = aws_iam_instance_profile.backend_profile.name
+  key_name               = var.key_name
+
+  user_data = <<-EOF
+              #!/bin/bash
+              apt update
+              apt install -y nodejs npm git
+              
+              # Clone repo (replace with your repo URL)
+              cd /home/ubuntu
+              # git clone <your-repo-url> app
+              # cd app/backend
+              # npm install
+              
+              # Install PM2 for process management
+              npm install -g pm2
+              
+              # Start backend (uncomment after setup)
+              # export AWS_REGION=us-east-1
+              # pm2 start server.js
+              # pm2 startup
+              # pm2 save
+              EOF
+
+  tags = {
+    Name = "backend-instance"
   }
 }
 
