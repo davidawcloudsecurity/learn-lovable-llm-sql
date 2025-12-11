@@ -26,26 +26,13 @@ const ChatInterface = () => {
   ];
 
   const generateSQLResponse = async (query: string): Promise<{sql: string, explanation: string}> => {
-    const response = await fetch('http://localhost:8000/api/generate-sql', {
+    const response = await fetch('/api/generate-sql', { // Use relative URL
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query })
     });
+    if (!response.ok) throw new Error('Failed to generate SQL');
     return await response.json();
-WHERE department = 'sales'
-AND salary > (
-  SELECT AVG(salary)
-  FROM employees
-  WHERE department = 'sales'
-)
-ORDER BY salary DESC;`;
-    }
-    
-    // Default response for other queries
-    return `SELECT *
-FROM your_table
-WHERE condition_based_on_your_query
-ORDER BY relevant_column;`;
   };
 
   const handleSubmit = async (queryText?: string) => {
@@ -86,7 +73,6 @@ ORDER BY relevant_column;`;
     } finally {
       setIsLoading(false);
     }
-    }, 2000);
   };
 
   const handleCopy = (text: string, id: string) => {
