@@ -28,13 +28,34 @@ const ChatInterface = () => {
   ];
 
   const generateSQLResponse = async (query: string): Promise<{sql: string, explanation: string}> => {
-    const response = await fetch(`${API_BASE_URL}/generate-sql`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query })
-    });
-    if (!response.ok) throw new Error('Failed to generate SQL');
-    return await response.json();
+    try {
+      console.log('Sending request to:', 'http://10.0.1.150:8000/api/generate-sql');
+      console.log('Query:', query);
+      
+      const response = await fetch('http://10.0.1.150:8000/api/generate-sql', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ query })
+      });
+      
+      console.log('Response status:', response.status);
+      console.log('Response ok:', response.ok);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+      
+      const data = await response.json();
+      console.log('Success:', data);
+      return data;
+    } catch (error) {
+      console.error('Fetch error:', error);
+      throw error;
+    }
   };
 
   const handleSubmit = async (queryText?: string) => {
