@@ -31,7 +31,7 @@ Question: ${query}
 Respond with JSON: {"sql": "YOUR_SQL_HERE", "explanation": "what it does"}`;
 
     const command = new InvokeModelCommand({
-      modelId: 'anthropic.claude-3-5-sonnet-20241022-v2:0',
+      modelId: 'us.anthropic.claude-3-5-sonnet-20241022-v2:0',
       body: JSON.stringify({
         anthropic_version: 'bedrock-2023-05-31',
         max_tokens: 1024,
