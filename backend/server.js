@@ -3,17 +3,30 @@ const cors = require('cors');
 const { BedrockRuntimeClient, InvokeModelCommand } = require('@aws-sdk/client-bedrock-runtime');
 
 const app = express();
+
+// Enable CORS first
 app.use(cors({
   origin: '*',
-  methods: ['GET', 'POST', 'OPTIONS'],
+  methods: ['GET', 'POST', 'OPTIONS', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: false
+  credentials: false,
+  optionsSuccessStatus: 204
 }));
+
+// Explicitly handle preflight
+app.options('*', cors());
+
+// Body parser
 app.use(express.json());
+
+// Request logging
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.url} from ${req.headers.origin || 'no origin'}`);
+  next();
+});
 
 const bedrock = new BedrockRuntimeClient({ 
   region: process.env.AWS_REGION || 'us-east-1',
-  // Will automatically use EC2 instance profile credentials
 });
 
 const DB_SCHEMA = `
@@ -26,7 +39,12 @@ Tables:
 
 app.post('/api/generate-sql', async (req, res) => {
   try {
+    console.log('Processing SQL generation request');
     const { query } = req.body;
+
+    if (!query) {
+      return res.status(400).json({ error: 'Query is required' });
+    }
 
     const prompt = `Convert this question to SQL. Database schema:
 ${DB_SCHEMA}
@@ -49,13 +67,32 @@ Respond with JSON: {"sql": "YOUR_SQL_HERE", "explanation": "what it does"}`;
     const content = result.content[0].text;
     
     const parsed = JSON.parse(content);
+    console.log('Successfully generated SQL');
     res.json(parsed);
   } catch (error) {
+    console.error('Error:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-app.get('/health', (req, res) => res.json({ status: 'ok' }));
+app.get('/health', (req, res) => {
+  console.log('Health check');
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Catch-all error handler
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err);
+  res.status(500).json({ error: 'Internal server error' });
+});
 
 const PORT = process.env.PORT || 8000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+const HOST = '0.0.0.0'; // Important: bind to all interfaces
+
+app.listen(PORT, HOST, () => {
+  console.log(`=================================`);
+  console.log(`Server running on http://${HOST}:${PORT}`);
+  console.log(`Accessible at http://10.0.1.150:${PORT}`);
+  console.log(`Health check: http://10.0.1.150:${PORT}/health`);
+  console.log(`=================================`);
+});
