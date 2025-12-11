@@ -6,7 +6,10 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const bedrock = new BedrockRuntimeClient({ region: process.env.AWS_REGION || 'us-east-1' });
+const bedrock = new BedrockRuntimeClient({ 
+  region: process.env.AWS_REGION || 'us-east-1',
+  // Will automatically use EC2 instance profile credentials
+});
 
 const DB_SCHEMA = `
 Tables:
