@@ -51,10 +51,8 @@ ${DB_SCHEMA}
 
 Question: ${query}
 
-Respond ONLY with valid JSON in this exact format (no markdown, no code blocks):
-{"sql": "YOUR_SQL_HERE", "explanation": "what it does"}
-
-Important: Keep SQL on a single line or use \\n for newlines in the JSON string.`;
+Respond with ONLY valid JSON in this exact format:
+{"sql": "YOUR_SQL_HERE", "explanation": "what it does"}`;
 
     const command = new InvokeModelCommand({
       modelId: 'us.anthropic.claude-3-5-sonnet-20241022-v2:0',
@@ -71,34 +69,8 @@ Important: Keep SQL on a single line or use \\n for newlines in the JSON string.
     
     console.log('Raw Claude response:', content);
     
-    // Clean up the response - remove markdown code blocks if present
-    let cleanedContent = content.trim();
-    
-    // Remove markdown JSON code blocks
-    cleanedContent = cleanedContent.replace(/```json\s*/g, '');
-    cleanedContent = cleanedContent.replace(/```\s*/g, '');
-    
-    // Extract JSON object
-    const jsonMatch = cleanedContent.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      console.error('No valid JSON found in response:', cleanedContent);
-      throw new Error('No valid JSON found in response');
-    }
-    
-    let jsonString = jsonMatch[0];
-    
-    // Replace actual newlines with \n in the JSON string
-    // This fixes the "Bad control character" error
-    jsonString = jsonString.replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\t/g, '\\t');
-    
-    console.log('Cleaned JSON string:', jsonString);
-    
-    const parsed = JSON.parse(jsonString);
-    
-    // Clean up the sql field to restore proper formatting for display
-    if (parsed.sql) {
-      parsed.sql = parsed.sql.replace(/\\n/g, '\n').replace(/\\t/g, '\t');
-    }
+    // Simply parse the content - Claude already provides valid JSON
+    const parsed = JSON.parse(content.trim());
     
     console.log('Successfully generated SQL:', parsed);
     res.json(parsed);
@@ -107,7 +79,7 @@ Important: Keep SQL on a single line or use \\n for newlines in the JSON string.
     console.error('Error stack:', error.stack);
     res.status(500).json({ 
       error: error.message,
-      details: 'Failed to parse AI response. Check server logs.'
+      details: 'Failed to generate or parse SQL query'
     });
   }
 });
