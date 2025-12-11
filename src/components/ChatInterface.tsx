@@ -29,10 +29,10 @@ const ChatInterface = () => {
 
   const generateSQLResponse = async (query: string): Promise<{sql: string, explanation: string}> => {
     try {
-      console.log('Sending request to:', 'http://10.0.1.150:8000/api/generate-sql');
+      console.log('Sending request to:', '/api/generate-sql');
       console.log('Query:', query);
       
-      const response = await fetch('http://10.0.1.150:8000/api/generate-sql', {
+      const response = await fetch('/api/generate-sql', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
