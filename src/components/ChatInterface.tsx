@@ -12,6 +12,8 @@ interface Message {
   sql?: string;
 }
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+
 const ChatInterface = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -26,7 +28,7 @@ const ChatInterface = () => {
   ];
 
   const generateSQLResponse = async (query: string): Promise<{sql: string, explanation: string}> => {
-    const response = await fetch('/api/generate-sql', { // Use relative URL
+    const response = await fetch(`${API_BASE_URL}/generate-sql`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query })
