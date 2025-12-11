@@ -66,7 +66,13 @@ Respond with JSON: {"sql": "YOUR_SQL_HERE", "explanation": "what it does"}`;
     const result = JSON.parse(new TextDecoder().decode(response.body));
     const content = result.content[0].text;
     
-    const parsed = JSON.parse(content);
+    // Clean the content and extract JSON
+    const jsonMatch = content.match(/\{.*\}/s);
+    if (!jsonMatch) {
+      throw new Error('No valid JSON found in response');
+    }
+    
+    const parsed = JSON.parse(jsonMatch[0]);
     console.log('Successfully generated SQL');
     res.json(parsed);
   } catch (error) {
