@@ -221,8 +221,9 @@ resource "aws_instance" "backend" {
               
               # Clone repo (replace with your repo URL)
               cd /opt
-              git clone  app
-              # cd app/backend
+              mkdir -p app/backend
+              git clone https://github.com/davidawcloudsecurity/learn-lovable-llm-sql.git app
+              cd app/backend
               # npm install
               
               # Install PM2 for process management
