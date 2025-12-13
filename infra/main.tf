@@ -172,17 +172,17 @@ resource "aws_instance" "frontend" {
               apt install -y nodejs npm nginx git
               
               # Clone repo (replace with your repo URL)
-              cd /home/ubuntu
-              # git clone <your-repo-url> app
-              # cd app
-              # npm install
-              # npm run build
+              cd /opt
+              git clone https://github.com/davidawcloudsecurity/learn-lovable-llm-sql.git app
+              cd app
+              npm install
+              npm run build
               
               # Configure nginx to serve React app
               cat > /etc/nginx/sites-available/default <<'NGINX'
               server {
                 listen 80;
-                root /home/ubuntu/app/dist;
+                root /opt/app/dist;
                 index index.html;
                 location / {
                   try_files $uri $uri/ /index.html;
