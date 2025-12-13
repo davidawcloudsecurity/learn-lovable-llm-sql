@@ -169,7 +169,11 @@ resource "aws_instance" "frontend" {
   user_data = <<-EOF
               #!/bin/bash
               apt update
-              apt install -y nodejs npm nginx git
+              apt install -y nginx git curl
+              
+              # Install Node.js 18 via NodeSource
+              curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+              apt install -y nodejs
               
               # Clone repo (replace with your repo URL)
               cd /opt
@@ -209,11 +213,15 @@ resource "aws_instance" "backend" {
   user_data = <<-EOF
               #!/bin/bash
               apt update
-              apt install -y nodejs npm git
+              apt install -y git curl
+              
+              # Install Node.js 18 via NodeSource
+              curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+              apt install -y nodejs
               
               # Clone repo (replace with your repo URL)
-              cd /home/ubuntu
-              # git clone <your-repo-url> app
+              cd /opt
+              git clone  app
               # cd app/backend
               # npm install
               
