@@ -25,6 +25,50 @@ export AWS_REGION=us-east-1
 npm start
 ```
 
+### Install AWSCLIv2
+```
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+unzip awscliv2.zip
+sudo ./aws/install
+```
+### List available models:
+```
+aws bedrock list-foundation-models --region us-east-1
+```
+### Get specific model details:
+```
+aws bedrock get-foundation-model \
+  --model-identifier us.anthropic.claude-3-5-sonnet-20241022-v2:0 \
+  --region us-east-1
+```
+### Invoke model (like your server does):
+```
+aws bedrock-runtime invoke-model \
+  --model-id us.anthropic.claude-3-5-sonnet-20241022-v2:0 \
+  --body '{"anthropic_version":"bedrock-2023-05-31","max_tokens":1024,"messages":[{"role":"user","content":"Convert to SQL: Show all employees"}]}' \
+  --cli-binary-format raw-in-base64-out \
+  --region us-east-1 \
+  output.json
+```
+### Check model access:
+````
+aws bedrock get-model-invocation-logging-configuration --region us-east-1
+```
+
+### List model customization jobs:
+````
+aws bedrock list-custom-models --region us-east-1
+```
+### Test with streaming (like chat):
+```
+aws bedrock-runtime invoke-model-with-response-stream \
+  --model-id us.anthropic.claude-3-5-sonnet-20241022-v2:0 \
+  --body '{"anthropic_version":"bedrock-2023-05-31","max_tokens":100,"messages":[{"role":"user","content":"Hello"}]}' \
+  --cli-binary-format raw-in-base64-out \
+  --region us-east-1 \
+  stream-output.json
+```
+
 ---
 
 ## Option 2: OpenAI API
