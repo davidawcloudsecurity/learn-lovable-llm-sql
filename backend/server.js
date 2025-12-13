@@ -94,3 +94,12 @@ app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
   res.status(500).json({ error: 'Internal server error' });
 });
+
+const PORT = process.env.PORT || 8000;
+const HOST = '0.0.0.0'; // Important: bind to all interfaces
+
+app.listen(PORT, HOST, () => {
+  console.log(`=================================`);
+  console.log(`Server running on http://${HOST}:${PORT}`);
+  console.log(`=================================`);
+});
