@@ -77,13 +77,6 @@ resource "aws_security_group" "frontend_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  ingress {
-    from_port   = 5173
-    to_port     = 5173
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
   egress {
     from_port   = 0
     to_port     = 0
@@ -188,6 +181,16 @@ resource "aws_instance" "frontend" {
                 listen 80;
                 root /opt/app/dist;
                 index index.html;
+                
+                # Proxy API requests to backend
+                location /api/ {
+                  proxy_pass http://${aws_instance.backend.private_ip}:8000;
+                  proxy_set_header Host $host;
+                  proxy_set_header X-Real-IP $remote_addr;
+                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                }
+                
+                # Serve React app
                 location / {
                   try_files $uri $uri/ /index.html;
                 }
@@ -220,10 +223,10 @@ resource "aws_instance" "backend" {
               apt install -y nodejs
               
               # Clone repo (replace with your repo URL)
-              cd /opt
-              git clone https://github.com/davidawcloudsecurity/learn-lovable-llm-sql.git app
-              cd app/backend
-              npm install
+              cd /home/ubuntu
+              # git clone <your-repo-url> app
+              # cd app/backend
+              # npm install
               
               # Install PM2 for process management
               npm install -g pm2
