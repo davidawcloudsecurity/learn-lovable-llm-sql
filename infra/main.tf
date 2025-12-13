@@ -223,10 +223,10 @@ resource "aws_instance" "backend" {
               apt install -y nodejs
               
               # Clone repo (replace with your repo URL)
-              cd /home/ubuntu
-              # git clone <your-repo-url> app
-              # cd app/backend
-              # npm install
+              cd /opt
+              git clone https://github.com/davidawcloudsecurity/learn-lovable-llm-sql.git app
+              cd app/backend
+              npm install
               
               # Install PM2 for process management
               npm install -g pm2
