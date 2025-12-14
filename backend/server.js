@@ -2,6 +2,15 @@ const express = require('express');
 const cors = require('cors');
 const { BedrockRuntimeClient, InvokeModelCommand } = require('@aws-sdk/client-bedrock-runtime');
 
+// Check if running in us-east-1
+const requiredRegion = 'us-east-1';
+const currentRegion = process.env.AWS_REGION || process.env.AWS_DEFAULT_REGION;
+
+if (currentRegion && currentRegion !== requiredRegion) {
+  console.error(`Error: Server must run in ${requiredRegion}, current region: ${currentRegion}`);
+  process.exit(1);
+}
+
 const app = express();
 
 // Enable CORS first
@@ -26,7 +35,7 @@ app.use((req, res, next) => {
 });
 
 const bedrock = new BedrockRuntimeClient({ 
-  region: process.env.AWS_REGION || 'us-east-1',
+  region: requiredRegion,
 });
 
 const DB_SCHEMA = `
