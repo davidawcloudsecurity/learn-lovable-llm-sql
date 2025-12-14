@@ -165,8 +165,8 @@ const ChatInterface = () => {
                   
                   {message.sql && (
                     <div className="relative">
-                      <pre className="bg-muted p-4 rounded-lg overflow-x-auto text-sm font-mono">
-                        <code>{message.sql}</code>
+                      <pre className="bg-muted border border-border p-4 rounded-lg overflow-x-auto text-sm font-mono shadow-sm whitespace-pre-wrap break-words">
+                        <code className="block">{message.sql}</code>
                       </pre>
                       
                       <Button
