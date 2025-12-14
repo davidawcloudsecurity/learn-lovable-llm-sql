@@ -114,6 +114,32 @@ resource "aws_security_group" "backend_sg" {
   }
 }
 
+# IAM Role for Frontend
+resource "aws_iam_role" "frontend_role" {
+  name = "frontend-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = {
+        Service = "ec2.amazonaws.com"
+      }
+    }]
+  })
+}
+
+resource "aws_iam_instance_profile" "frontend_profile" {
+  name = "frontend-instance-profile"
+  role = aws_iam_role.frontend_role.name
+}
+
+resource "aws_iam_role_policy_attachment" "frontend_ssm_policy" {
+  role       = aws_iam_role.frontend_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
 # IAM Role for Backend (Bedrock access)
 resource "aws_iam_role" "backend_role" {
   name = "backend-bedrock-role"
@@ -152,12 +178,18 @@ resource "aws_iam_instance_profile" "backend_profile" {
   role = aws_iam_role.backend_role.name
 }
 
+resource "aws_iam_role_policy_attachment" "backend_ssm_policy" {
+  role       = aws_iam_role.backend_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
 # Frontend EC2 Instance
 resource "aws_instance" "frontend" {
   ami                    = data.aws_ami.ubuntu.id
   instance_type          = "t3.small"
   subnet_id              = aws_subnet.public_subnet.id
   vpc_security_group_ids = [aws_security_group.frontend_sg.id]
+  iam_instance_profile   = aws_iam_instance_profile.frontend_profile.name
 
   user_data = <<-EOF
               #!/bin/bash
