@@ -26,7 +26,7 @@ app.use((req, res, next) => {
 });
 
 const bedrock = new BedrockRuntimeClient({ 
-  region: 'us-east-1',
+  region: process.env.AWS_REGION || 'us-east-1',
 });
 
 const DB_SCHEMA = `
