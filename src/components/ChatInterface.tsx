@@ -28,34 +28,25 @@ const ChatInterface = () => {
   ];
 
   const generateSQLResponse = async (query: string): Promise<{sql: string, explanation: string}> => {
-    try {
-      console.log('Sending request to:', '/api/generate-sql');
-      console.log('Query:', query);
-      
-      const response = await fetch('/api/generate-sql', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ query })
-      });
-      
-      console.log('Response status:', response.status);
-      console.log('Response ok:', response.ok);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Error response:', errorText);
-        throw new Error(`HTTP ${response.status}: ${errorText}`);
+    const mockResponses: Record<string, {sql: string, explanation: string}> = {
+      "Show me all customers who made purchases in the last 30 days": {
+        sql: "SELECT DISTINCT c.customer_id, c.name, c.email\nFROM customers c\nJOIN orders o ON c.customer_id = o.customer_id\nWHERE o.order_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY);",
+        explanation: "This query finds all customers who have made at least one purchase in the last 30 days by joining customers and orders tables."
+      },
+      "Find the top 10 products by revenue this month": {
+        sql: "SELECT p.product_id, p.name, SUM(oi.quantity * oi.price) as revenue\nFROM products p\nJOIN order_items oi ON p.product_id = oi.product_id\nJOIN orders o ON oi.order_id = o.order_id\nWHERE MONTH(o.order_date) = MONTH(CURDATE())\nGROUP BY p.product_id, p.name\nORDER BY revenue DESC\nLIMIT 10;",
+        explanation: "This query calculates total revenue for each product this month and returns the top 10 by revenue."
+      },
+      "List employees with salary above average in the sales department": {
+        sql: "SELECT e.employee_id, e.name, e.salary\nFROM employees e\nWHERE e.department = 'Sales'\nAND e.salary > (\n  SELECT AVG(salary)\n  FROM employees\n  WHERE department = 'Sales'\n);",
+        explanation: "This query finds sales employees whose salary is above the average salary in the sales department."
       }
-      
-      const data = await response.json();
-      console.log('Success:', data);
-      return data;
-    } catch (error) {
-      console.error('Fetch error:', error);
-      throw error;
-    }
+    };
+
+    return mockResponses[query] || {
+      sql: "SELECT * FROM table_name WHERE condition = 'value';",
+      explanation: "This is a generic SQL query. Please provide more specific requirements."
+    };
   };
 
   const handleSubmit = async (queryText?: string) => {
