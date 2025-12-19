@@ -1,5 +1,9 @@
 Based on the AWS blog post you shared, here's how to use this `main.tf`:
 
+### How to view Nginx logs
+```
+/var/log/nginx/error.log
+```
 ## Step-by-Step Deployment Guide
 
 ### 1. **Prerequisites Setup**
