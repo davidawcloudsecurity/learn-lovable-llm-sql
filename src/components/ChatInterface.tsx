@@ -106,8 +106,8 @@ const ChatInterface = () => {
 
     try {
       let response;
-      
-      if (isExample && hardcodedResponses[query as keyof typeof hardcodedResponses]) {
+
+      if (isExample && !useApiQueries && hardcodedResponses[query as keyof typeof hardcodedResponses]) {
         response = hardcodedResponses[query as keyof typeof hardcodedResponses];
       } else {
         response = await generateSQLResponse(query);
