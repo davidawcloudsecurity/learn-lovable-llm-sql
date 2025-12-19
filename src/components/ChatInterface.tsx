@@ -21,44 +21,75 @@ const ChatInterface = () => {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const exampleQueries = [
+  // Hardcoded example queries
+  const hardcodedQueries = [
     "Show me all customers who made purchases in the last 30 days",
     "Find the top 10 products by revenue this month",
     "List employees with salary above average in the sales department",
   ];
 
-  const generateSQLResponse = async (query: string): Promise<{sql: string, explanation: string}> => {
+  const [exampleQueries, setExampleQueries] = useState(hardcodedQueries);
+  const [useApiQueries, setUseApiQueries] = useState(false);
+
+  const fetchExampleQueries = async () => {
     try {
-      console.log('Sending request to:', '/api/generate-sql');
-      console.log('Query:', query);
-      
-      const response = await fetch('/api/generate-sql', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ query })
-      });
-      
-      console.log('Response status:', response.status);
-      console.log('Response ok:', response.ok);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Error response:', errorText);
-        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      const response = await fetch(`${API_BASE_URL}/example-queries`);
+      if (response.ok) {
+        const data = await response.json();
+        return data.queries || hardcodedQueries;
       }
-      
-      const data = await response.json();
-      console.log('Success:', data);
-      return data;
     } catch (error) {
-      console.error('Fetch error:', error);
-      throw error;
+      console.error('Failed to fetch example queries:', error);
+    }
+    return hardcodedQueries;
+  };
+
+  const toggleQuerySource = async () => {
+    if (!useApiQueries) {
+      const apiQueries = await fetchExampleQueries();
+      setExampleQueries(apiQueries);
+    } else {
+      setExampleQueries(hardcodedQueries);
+    }
+    setUseApiQueries(!useApiQueries);
+  };
+
+  const hardcodedResponses = {
+    "Show me all customers who made purchases in the last 30 days": {
+      sql: "SELECT * FROM customers c\nWHERE EXISTS (\n  SELECT 1 FROM orders o\n  WHERE o.customer_id = c.id\n  AND o.order_date >= CURRENT_DATE - INTERVAL 30 DAY\n);",
+      explanation: "This query finds all customers who have made at least one purchase in the last 30 days by checking for existing orders within that timeframe."
+    },
+    "Find the top 10 products by revenue this month": {
+      sql: "SELECT p.name, SUM(oi.quantity * oi.price) as revenue\nFROM products p\nJOIN order_items oi ON p.id = oi.product_id\nJOIN orders o ON oi.order_id = o.id\nWHERE MONTH(o.order_date) = MONTH(CURRENT_DATE)\nAND YEAR(o.order_date) = YEAR(CURRENT_DATE)\nGROUP BY p.id, p.name\nORDER BY revenue DESC\nLIMIT 10;",
+      explanation: "This query calculates total revenue for each product this month and returns the top 10 highest earning products."
+    },
+    "List employees with salary above average in the sales department": {
+      sql: "SELECT e.name, e.salary\nFROM employees e\nWHERE e.department = 'sales'\nAND e.salary > (\n  SELECT AVG(salary)\n  FROM employees\n  WHERE department = 'sales'\n);",
+      explanation: "This query finds all sales department employees whose salary exceeds the average salary within their department."
     }
   };
 
-  const handleSubmit = async (queryText?: string) => {
+  const generateSQLResponse = async (query: string): Promise<{sql: string, explanation: string}> => {
+    const response = await fetch(`${API_BASE_URL}/generate-sql`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ query }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return {
+      sql: data.sql,
+      explanation: data.explanation
+    };
+  };
+
+  const handleSubmit = async (queryText?: string, isExample = false) => {
     const query = queryText || input.trim();
     if (!query) return;
 
@@ -74,7 +105,14 @@ const ChatInterface = () => {
     setIsLoading(true);
 
     try {
-      const response = await generateSQLResponse(query);
+      let response;
+      
+      if (isExample && hardcodedResponses[query as keyof typeof hardcodedResponses]) {
+        response = hardcodedResponses[query as keyof typeof hardcodedResponses];
+      } else {
+        response = await generateSQLResponse(query);
+      }
+      
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: "assistant",
@@ -122,11 +160,21 @@ const ChatInterface = () => {
         {/* Example queries */}
         {messages.length === 0 && (
           <div className="mb-8 space-y-3">
-            <p className="text-sm font-medium text-muted-foreground mb-3">Try these examples:</p>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm font-medium text-muted-foreground">Try these examples:</p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={toggleQuerySource}
+                className="text-xs"
+              >
+                {useApiQueries ? 'API' : 'Hardcoded'}
+              </Button>
+            </div>
             {exampleQueries.map((query, idx) => (
               <button
                 key={idx}
-                onClick={() => handleSubmit(query)}
+                onClick={() => handleSubmit(query, true)}
                 className="w-full text-left p-4 rounded-lg border-2 border-border hover:border-primary/50 hover:bg-secondary/50 transition-all duration-300 group"
               >
                 <div className="flex items-start gap-3">
