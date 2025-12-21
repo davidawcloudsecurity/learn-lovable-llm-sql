@@ -29,7 +29,7 @@ Respond with ONLY valid JSON in this exact format:
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'smollm2:latest',
+        model: 'smollm2:latest', // 30GB+ model
         prompt: prompt,
         stream: false,
         options: {
@@ -40,7 +40,18 @@ Respond with ONLY valid JSON in this exact format:
       })
     });
 
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Ollama API error: ${response.status} - ${errorText}`);
+    }
+
     const data = await response.json();
+    console.log('Ollama response:', data);
+    
+    if (!data.response) {
+      throw new Error('No response from Ollama model');
+    }
+    
     const content = data.response.trim();
     
     // Extract JSON from response
