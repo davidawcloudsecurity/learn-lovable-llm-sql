@@ -70,7 +70,7 @@ const ChatInterface = () => {
   };
 
   const generateSQLResponse = async (query: string): Promise<{sql: string, explanation: string}> => {
-    const response = await fetch(`${API_BASE_URL}/generate-sql`, {
+    const response = await fetch(`/api/generate-sql`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
