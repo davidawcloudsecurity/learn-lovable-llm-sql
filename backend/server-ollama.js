@@ -61,6 +61,23 @@ Respond with ONLY valid JSON in this exact format:
     }
     
     const result = JSON.parse(jsonMatch[0]);
+    
+    // Format SQL for better readability
+    if (result.sql) {
+      result.sql = result.sql
+        .replace(/\bSELECT\b/gi, '\nSELECT')
+        .replace(/\bFROM\b/gi, '\nFROM')
+        .replace(/\bWHERE\b/gi, '\nWHERE')
+        .replace(/\bJOIN\b/gi, '\nJOIN')
+        .replace(/\bON\b/gi, '\nON')
+        .replace(/\bAND\b/gi, '\nAND')
+        .replace(/\bOR\b/gi, '\nOR')
+        .replace(/\bORDER BY\b/gi, '\nORDER BY')
+        .replace(/\bGROUP BY\b/gi, '\nGROUP BY')
+        .replace(/\bHAVING\b/gi, '\nHAVING')
+        .trim();
+    }
+    
     res.json(result);
   } catch (error) {
     console.error('Error:', error);
