@@ -240,14 +240,14 @@ resource "aws_instance" "frontend" {
 # Backend EC2 Instance
 resource "aws_instance" "backend" {
   ami                    = data.aws_ami.ubuntu.id
-  instance_type          = "t3.small"
+  instance_type          = "m5.large"
   subnet_id              = aws_subnet.public_subnet.id
   vpc_security_group_ids = [aws_security_group.backend_sg.id]
   iam_instance_profile   = aws_iam_instance_profile.backend_profile.name
 
   root_block_device {
     volume_type = "gp3"
-    volume_size = 30
+    volume_size = 50
     encrypted   = true
   }
 
