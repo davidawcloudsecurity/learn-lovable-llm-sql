@@ -184,12 +184,17 @@ resource "aws_iam_role_policy_attachment" "backend_ssm_policy" {
 }
 
 # Frontend EC2 Instance
-resource "aws_instance" "frontend" {
+resource "aws_spot_instance_request" "frontend" {
   ami                    = data.aws_ami.ubuntu.id
   instance_type          = "t3.small"
   subnet_id              = aws_subnet.public_subnet.id
   vpc_security_group_ids = [aws_security_group.frontend_sg.id]
   iam_instance_profile   = aws_iam_instance_profile.frontend_profile.name
+  
+  spot_price                      = "0.02"
+  wait_for_fulfillment           = true
+  spot_type                      = "one-time"
+  instance_interruption_behavior = "terminate"
 
   user_data = <<-EOF
               #!/bin/bash
@@ -216,7 +221,7 @@ resource "aws_instance" "frontend" {
                 
                 # Proxy API requests to backend
                 location /api/ {
-                  proxy_pass http://${aws_instance.backend.private_ip}:8000;
+                  proxy_pass http://${aws_spot_instance_request.backend.private_ip}:8000;
                   proxy_set_header Host $host;
                   proxy_set_header X-Real-IP $remote_addr;
                   proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -238,12 +243,17 @@ resource "aws_instance" "frontend" {
 }
 
 # Backend EC2 Instance
-resource "aws_instance" "backend" {
+resource "aws_spot_instance_request" "backend" {
   ami                    = data.aws_ami.ubuntu.id
-  instance_type          = "m5.large"
+  instance_type          = "g4dn.xlarge"
   subnet_id              = aws_subnet.public_subnet.id
   vpc_security_group_ids = [aws_security_group.backend_sg.id]
   iam_instance_profile   = aws_iam_instance_profile.backend_profile.name
+  
+  spot_price                      = "0.02"
+  wait_for_fulfillment           = true
+  spot_type                      = "one-time"
+  instance_interruption_behavior = "terminate"
 
   root_block_device {
     volume_type = "gp3"
