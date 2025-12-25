@@ -250,7 +250,7 @@ resource "aws_spot_instance_request" "backend" {
   vpc_security_group_ids = [aws_security_group.backend_sg.id]
   iam_instance_profile   = aws_iam_instance_profile.backend_profile.name
   
-  spot_price                      = "0.02"
+  spot_price                      = "0.2355"
   wait_for_fulfillment           = true
   spot_type                      = "one-time"
   instance_interruption_behavior = "terminate"
