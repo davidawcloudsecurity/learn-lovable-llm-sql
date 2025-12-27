@@ -249,12 +249,12 @@ resource "aws_spot_instance_request" "backend" {
   subnet_id              = aws_subnet.public_subnet.id
   vpc_security_group_ids = [aws_security_group.backend_sg.id]
   iam_instance_profile   = aws_iam_instance_profile.backend_profile.name
-/*  
-  spot_price                      = "0.0362"
+
+  spot_price                      = "0.062"
   wait_for_fulfillment           = true
   spot_type                      = "one-time"
   instance_interruption_behavior = "terminate"
-*/
+
   root_block_device {
     volume_type = "gp3"
     volume_size = 50
@@ -267,7 +267,7 @@ resource "aws_spot_instance_request" "backend" {
               apt install -y git curl
               
               # Install Node.js 18 via NodeSource
-              curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+              curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
               apt install -y nodejs
               
               # Clone repo (replace with your repo URL)
