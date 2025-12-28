@@ -238,6 +238,10 @@ resource "aws_spot_instance_request" "frontend" {
               EOF
 
   tags = {
+    Name = "frontend-spot-request"
+  }
+
+  instance_tags = {
     Name = "frontend-instance"
   }
 }
@@ -287,6 +291,10 @@ resource "aws_spot_instance_request" "backend" {
               EOF
 
   tags = {
+    Name = "backend-spot-request"
+  }
+
+  instance_tags = {
     Name = "backend-instance"
   }
 }
