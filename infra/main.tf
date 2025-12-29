@@ -193,8 +193,8 @@ resource "aws_spot_instance_request" "frontend" {
   
   spot_price                      = "0.02"
   wait_for_fulfillment           = true
-  spot_type                      = "one-time"
-  instance_interruption_behavior = "terminate"
+  spot_type                      = "persistent"
+  instance_interruption_behavior = "stop"
 
   user_data = <<-EOF
               #!/bin/bash
