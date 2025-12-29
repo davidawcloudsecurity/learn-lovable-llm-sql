@@ -134,9 +134,17 @@ const ChatInterface = () => {
         description: "Your SQL query is ready to use",
       });
     } catch (error) {
+      // Show error message in chat instead of just toast
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        type: "assistant",
+        text: "Sorry, I couldn't generate the SQL query. Please try rephrasing your question or check your connection.",
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+      
       toast({
         title: "Error",
-        description: "Failed to generate SQL query",
+        description: error instanceof Error ? error.message : "Failed to generate SQL query",
         variant: "destructive",
       });
     } finally {
