@@ -17,6 +17,13 @@ app.post('/api/generate-sql', async (req, res) => {
   try {
     const { query } = req.body;
 
+    // Basic input validation
+    if (!query || typeof query !== 'string' || query.trim().length === 0) {
+      return res.status(400).json({ 
+        error: 'Query is required and must be a non-empty string' 
+      });
+    }
+
     const prompt = `Convert this question to SQL. Database schema:
 ${DB_SCHEMA}
 
@@ -29,7 +36,7 @@ Respond with ONLY valid JSON in this exact format:
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'smollm2:latest', // 30GB+ model
+        model: 'smollm2:latest',
         prompt: prompt,
         stream: false,
         options: {
@@ -41,12 +48,10 @@ Respond with ONLY valid JSON in this exact format:
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Ollama API error: ${response.status} - ${errorText}`);
+      throw new Error(`Ollama API error: ${response.status}`);
     }
 
     const data = await response.json();
-    console.log('Ollama response:', data);
     
     if (!data.response) {
       throw new Error('No response from Ollama model');
@@ -62,26 +67,17 @@ Respond with ONLY valid JSON in this exact format:
     
     const result = JSON.parse(jsonMatch[0]);
     
-    // Format SQL for better readability
-    if (result.sql) {
-      result.sql = result.sql
-        .replace(/\bSELECT\b/gi, '\nSELECT')
-        .replace(/\bFROM\b/gi, '\nFROM')
-        .replace(/\bWHERE\b/gi, '\nWHERE')
-        .replace(/\bJOIN\b/gi, '\nJOIN')
-        .replace(/\bON\b/gi, '\nON')
-        .replace(/\bAND\b/gi, '\nAND')
-        .replace(/\bOR\b/gi, '\nOR')
-        .replace(/\bORDER BY\b/gi, '\nORDER BY')
-        .replace(/\bGROUP BY\b/gi, '\nGROUP BY')
-        .replace(/\bHAVING\b/gi, '\nHAVING')
-        .trim();
+    // Validate result structure
+    if (!result.sql || !result.explanation) {
+      throw new Error('Response missing required fields');
     }
     
     res.json(result);
   } catch (error) {
     console.error('Error:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ 
+      error: error.message || 'An unexpected error occurred'
+    });
   }
 });
 
