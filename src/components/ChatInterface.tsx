@@ -70,23 +70,31 @@ const ChatInterface = () => {
   };
 
   const generateSQLResponse = async (query: string): Promise<{sql: string, explanation: string}> => {
-    const response = await fetch(`/api/generate-sql`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ query }),
-    });
+    try {
+      const response = await fetch(`/api/generate-sql`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ query }),
+      });
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Server error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (!data.sql || !data.explanation) {
+        throw new Error('Invalid response format from server');
+      }
+      
+      return { sql: data.sql, explanation: data.explanation };
+    } catch (error) {
+      console.error('SQL generation error:', error);
+      throw error;
     }
-
-    const data = await response.json();
-    return {
-      sql: data.sql,
-      explanation: data.explanation
-    };
   };
 
   const handleSubmit = async (queryText?: string, isExample = false) => {
