@@ -12,6 +12,8 @@ interface Message {
   sql?: string;
 }
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+
 const ChatInterface = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -25,43 +27,35 @@ const ChatInterface = () => {
     "List employees with salary above average in the sales department",
   ];
 
-  const generateSQLResponse = (query: string): string => {
-    if (query.toLowerCase().includes("customers") && query.toLowerCase().includes("30 days")) {
-      return `SELECT customer_id, customer_name, purchase_date, total_amount
-FROM customers c
-JOIN orders o ON c.customer_id = o.customer_id
-WHERE o.purchase_date >= DATE_SUB(CURRENT_DATE, INTERVAL 30 DAY)
-ORDER BY o.purchase_date DESC;`;
+  const generateSQLResponse = async (query: string): Promise<{sql: string, explanation: string}> => {
+    try {
+      console.log('Sending request to:', '/api/generate-sql');
+      console.log('Query:', query);
+      
+      const response = await fetch('/api/generate-sql', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ query })
+      });
+      
+      console.log('Response status:', response.status);
+      console.log('Response ok:', response.ok);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+      
+      const data = await response.json();
+      console.log('Success:', data);
+      return data;
+    } catch (error) {
+      console.error('Fetch error:', error);
+      throw error;
     }
-    
-    if (query.toLowerCase().includes("top 10") && query.toLowerCase().includes("products")) {
-      return `SELECT p.product_name, SUM(oi.quantity * oi.price) as total_revenue
-FROM products p
-JOIN order_items oi ON p.product_id = oi.product_id
-JOIN orders o ON oi.order_id = o.order_id
-WHERE MONTH(o.order_date) = MONTH(CURRENT_DATE)
-GROUP BY p.product_id, p.product_name
-ORDER BY total_revenue DESC
-LIMIT 10;`;
-    }
-    
-    if (query.toLowerCase().includes("employees") && query.toLowerCase().includes("salary")) {
-      return `SELECT employee_id, employee_name, salary, department
-FROM employees
-WHERE department = 'sales'
-AND salary > (
-  SELECT AVG(salary)
-  FROM employees
-  WHERE department = 'sales'
-)
-ORDER BY salary DESC;`;
-    }
-    
-    // Default response for other queries
-    return `SELECT *
-FROM your_table
-WHERE condition_based_on_your_query
-ORDER BY relevant_column;`;
   };
 
   const handleSubmit = async (queryText?: string) => {
@@ -79,22 +73,29 @@ ORDER BY relevant_column;`;
     setInput("");
     setIsLoading(true);
 
-    // Simulate AI processing (replace with actual API call)
-    setTimeout(() => {
+    try {
+      const response = await generateSQLResponse(query);
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: "assistant",
-        text: "I've converted your question into an SQL query:",
-        sql: generateSQLResponse(query),
+        text: response.explanation,
+        sql: response.sql,
       };
       setMessages((prev) => [...prev, assistantMessage]);
-      setIsLoading(false);
       
       toast({
         title: "Query Generated",
         description: "Your SQL query is ready to use",
       });
-    }, 2000);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to generate SQL query",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleCopy = (text: string, id: string) => {
@@ -164,8 +165,8 @@ ORDER BY relevant_column;`;
                   
                   {message.sql && (
                     <div className="relative">
-                      <pre className="bg-muted p-4 rounded-lg overflow-x-auto text-sm font-mono">
-                        <code>{message.sql}</code>
+                      <pre className="bg-muted border border-border p-4 rounded-lg overflow-x-auto text-sm font-mono shadow-sm whitespace-pre-wrap break-words">
+                        <code className="block">{message.sql}</code>
                       </pre>
                       
                       <Button
