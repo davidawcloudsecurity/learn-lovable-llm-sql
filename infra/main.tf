@@ -251,7 +251,7 @@ resource "aws_spot_instance_request" "backend" {
   iam_instance_profile   = aws_iam_instance_profile.backend_profile.name
 
   spot_price                     = "0.09"
-  wait_for_fulfillment           = true
+  wait_for_fulfillment           = false
   spot_type                      = "persistent"
   instance_interruption_behavior = "stop"
 
