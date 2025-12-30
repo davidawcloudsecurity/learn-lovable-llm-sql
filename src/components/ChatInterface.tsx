@@ -293,6 +293,7 @@ const ChatInterface = () => {
         </Card>
       </div>
     </section>
+    
   );
 };
 
