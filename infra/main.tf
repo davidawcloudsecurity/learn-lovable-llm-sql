@@ -191,7 +191,7 @@ resource "aws_spot_instance_request" "frontend" {
   vpc_security_group_ids = [aws_security_group.frontend_sg.id]
   iam_instance_profile   = aws_iam_instance_profile.frontend_profile.name
   
-  spot_price                      = "0.01"
+  spot_price                      = "0.02"
   wait_for_fulfillment           = true
   spot_type                      = "persistent"
   instance_interruption_behavior = "stop"
@@ -250,7 +250,7 @@ resource "aws_spot_instance_request" "backend" {
   vpc_security_group_ids = [aws_security_group.backend_sg.id]
   iam_instance_profile   = aws_iam_instance_profile.backend_profile.name
 
-  spot_price                     = "0.05"
+  spot_price                     = "0.08"
   wait_for_fulfillment           = true
   spot_type                      = "persistent"
   instance_interruption_behavior = "stop"
