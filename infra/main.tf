@@ -265,6 +265,9 @@ resource "aws_spot_instance_request" "backend" {
               #!/bin/bash
               apt update
               apt install -y git curl
+
+              # Install Ollama
+              curl -fsSL https://ollama.com/install.sh | sh
               
               # Install Node.js 18 via NodeSource
               curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
