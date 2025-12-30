@@ -70,31 +70,23 @@ const ChatInterface = () => {
   };
 
   const generateSQLResponse = async (query: string): Promise<{sql: string, explanation: string}> => {
-    try {
-      const response = await fetch(`/api/generate-sql`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ query }),
-      });
+    const response = await fetch(`${API_BASE_URL}/generate-sql`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ query }),
+    });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `Server error: ${response.status}`);
-      }
-
-      const data = await response.json();
-      
-      if (!data.sql || !data.explanation) {
-        throw new Error('Invalid response format from server');
-      }
-      
-      return { sql: data.sql, explanation: data.explanation };
-    } catch (error) {
-      console.error('SQL generation error:', error);
-      throw error;
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
+
+    const data = await response.json();
+    return {
+      sql: data.sql,
+      explanation: data.explanation
+    };
   };
 
   const handleSubmit = async (queryText?: string, isExample = false) => {
@@ -114,8 +106,8 @@ const ChatInterface = () => {
 
     try {
       let response;
-
-      if (isExample && !useApiQueries && hardcodedResponses[query as keyof typeof hardcodedResponses]) {
+      
+      if (isExample && hardcodedResponses[query as keyof typeof hardcodedResponses]) {
         response = hardcodedResponses[query as keyof typeof hardcodedResponses];
       } else {
         response = await generateSQLResponse(query);
@@ -134,17 +126,9 @@ const ChatInterface = () => {
         description: "Your SQL query is ready to use",
       });
     } catch (error) {
-      // Show error message in chat instead of just toast
-      const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        type: "assistant",
-        text: "Sorry, I couldn't generate the SQL query. Please try rephrasing your question or check your connection.",
-      };
-      setMessages((prev) => [...prev, errorMessage]);
-      
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to generate SQL query",
+        description: "Failed to generate SQL query",
         variant: "destructive",
       });
     } finally {
