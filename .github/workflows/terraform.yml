@@ -83,7 +83,6 @@ jobs:
 
       - name: Terraform Plan
         run: |
-          terraform state rm aws_spot_instance_request.backend
           terraform plan
         working-directory: infra
 
