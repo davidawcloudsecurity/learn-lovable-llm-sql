@@ -203,7 +203,7 @@ const ChatInterface = () => {
         )}
 
         {/* Chat messages */}
-        <div className="space-y-6 mb-6 h-[500px] overflow-y-auto border rounded-lg p-4">
+        <div className="space-y-6 mb-6 min-h-[200px]">
           {messages.map((message) => (
             <Card
               key={message.id}
@@ -228,32 +228,23 @@ const ChatInterface = () => {
                   <p className="text-sm leading-relaxed">{message.text}</p>
                   
                   {message.sql && (
-                    <div className="relative mt-3">
-                      {/* Language badge */}
-                      <div className="flex items-center justify-between bg-muted/50 px-4 py-2 rounded-t-lg border border-border border-b-0">
-                        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                          SQL
-                        </span>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-7 w-7 p-0"
-                          onClick={() => handleCopy(message.sql!, message.id)}
-                        >
-                          {copiedId === message.id ? (
-                            <Check className="h-3.5 w-3.5 text-green-500" />
-                          ) : (
-                            <Copy className="h-3.5 w-3.5" />
-                          )}
-                        </Button>
-                      </div>
-                      
-                      {/* Code block */}
-                      <pre className="bg-[#1e1e1e] border border-border rounded-b-lg p-4 overflow-x-auto">
-                        <code className="text-sm font-mono text-[#d4d4d4] leading-relaxed block">
-                          {message.sql}
-                        </code>
+                    <div className="relative">
+                      <pre className="bg-muted border border-border p-4 rounded-lg overflow-x-auto text-sm font-mono shadow-sm whitespace-pre-wrap break-words">
+                        <code className="block">{message.sql}</code>
                       </pre>
+                      
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="absolute top-2 right-2"
+                        onClick={() => handleCopy(message.sql!, message.id)}
+                      >
+                        {copiedId === message.id ? (
+                          <Check className="h-4 w-4 text-accent" />
+                        ) : (
+                          <Copy className="h-4 w-4" />
+                        )}
+                      </Button>
                     </div>
                   )}
                 </div>
