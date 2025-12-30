@@ -245,12 +245,12 @@ resource "aws_spot_instance_request" "frontend" {
 # Backend EC2 Instance
 resource "aws_spot_instance_request" "backend" {
   ami                    = data.aws_ami.ubuntu.id
-  instance_type          = "m5.xlarge"
+  instance_type          = "m5.large"
   subnet_id              = aws_subnet.public_subnet.id
   vpc_security_group_ids = [aws_security_group.backend_sg.id]
   iam_instance_profile   = aws_iam_instance_profile.backend_profile.name
 
-  spot_price                     = "0.095"
+  spot_price                     = "0.085"
   wait_for_fulfillment           = true
   spot_type                      = "persistent"
   instance_interruption_behavior = "stop"
