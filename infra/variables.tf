@@ -9,7 +9,7 @@ variable "environment" {
   type        = string
   default     = "dev"
 }
-/*
+
 variable "ec2_instance_type" {
   description = "EC2 instance type for RDS setup"
   type        = string
@@ -76,4 +76,3 @@ variable "availability_zones" {
   type        = list(string)
   default     = ["us-east-1a", "us-east-1b", "us-east-1c"]
 }
-*/
