@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
-import { Send, Copy, Check, Loader2, Database } from "lucide-react";
+import { Send, Copy, Check, Loader2, Database, Square } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Badge } from "@/components/ui/badge";
 
 interface Message {
   id: string;
@@ -19,7 +20,35 @@ const ChatInterface = () => {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [thinkingSeconds, setThinkingSeconds] = useState(0);
+  const abortControllerRef = useRef<AbortController | null>(null);
   const { toast } = useToast();
+
+  // Timer for "Thinking for Ns"
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isLoading) {
+      setThinkingSeconds(0);
+      interval = setInterval(() => {
+        setThinkingSeconds((prev) => prev + 1);
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isLoading]);
+
+  const handleStop = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+      setIsLoading(false);
+      toast({
+        title: "Stopped",
+        description: "Query generation was cancelled",
+      });
+    }
+  };
 
   const exampleQueries = [
     "Show me all customers who made purchases in the last 30 days",
@@ -27,7 +56,7 @@ const ChatInterface = () => {
     "List employees with salary above average in the sales department",
   ];
 
-  const generateSQLResponse = async (query: string): Promise<{sql: string, explanation: string}> => {
+  const generateSQLResponse = async (query: string, signal: AbortSignal): Promise<{sql: string, explanation: string}> => {
     try {
       console.log('Sending request to:', '/api/generate-sql');
       console.log('Query:', query);
@@ -37,7 +66,8 @@ const ChatInterface = () => {
         headers: { 
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ query })
+        body: JSON.stringify({ query }),
+        signal,
       });
       
       console.log('Response status:', response.status);
@@ -53,6 +83,9 @@ const ChatInterface = () => {
       console.log('Success:', data);
       return data;
     } catch (error) {
+      if ((error as Error).name === 'AbortError') {
+        throw new Error('Request was cancelled');
+      }
       console.error('Fetch error:', error);
       throw error;
     }
@@ -72,9 +105,11 @@ const ChatInterface = () => {
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setIsLoading(true);
+    
+    abortControllerRef.current = new AbortController();
 
     try {
-      const response = await generateSQLResponse(query);
+      const response = await generateSQLResponse(query, abortControllerRef.current.signal);
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: "assistant",
@@ -88,13 +123,16 @@ const ChatInterface = () => {
         description: "Your SQL query is ready to use",
       });
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to generate SQL query",
-        variant: "destructive",
-      });
+      if ((error as Error).message !== 'Request was cancelled') {
+        toast({
+          title: "Error",
+          description: "Failed to generate SQL query",
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsLoading(false);
+      abortControllerRef.current = null;
     }
   };
 
@@ -205,6 +243,18 @@ const ChatInterface = () => {
 
         {/* Input area */}
         <Card className="p-4 shadow-elegant">
+          {/* Reasoning indicator */}
+          {isLoading && (
+            <div className="mb-3 flex items-center gap-2">
+              <Badge variant="secondary" className="text-xs font-medium">
+                Reasoning
+              </Badge>
+              <span className="text-sm text-muted-foreground animate-pulse">
+                Thinking for {thinkingSeconds}s
+              </span>
+            </div>
+          )}
+          
           <div className="flex gap-3">
             <Textarea
               value={input}
@@ -220,18 +270,25 @@ const ChatInterface = () => {
               disabled={isLoading}
             />
             
-            <Button
-              onClick={() => handleSubmit()}
-              disabled={!input.trim() || isLoading}
-              size="lg"
-              className="flex-shrink-0 bg-gradient-to-r from-primary to-primary-glow hover:shadow-glow transition-all duration-300"
-            >
-              {isLoading ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
-              ) : (
+            {isLoading ? (
+              <Button
+                onClick={handleStop}
+                size="lg"
+                variant="destructive"
+                className="flex-shrink-0"
+              >
+                <Square className="h-4 w-4 fill-current" />
+              </Button>
+            ) : (
+              <Button
+                onClick={() => handleSubmit()}
+                disabled={!input.trim()}
+                size="lg"
+                className="flex-shrink-0 bg-gradient-to-r from-primary to-primary-glow hover:shadow-glow transition-all duration-300"
+              >
                 <Send className="h-5 w-5" />
-              )}
-            </Button>
+              </Button>
+            )}
           </div>
         </Card>
       </div>
