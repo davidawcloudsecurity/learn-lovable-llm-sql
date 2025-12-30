@@ -86,6 +86,12 @@ jobs:
           terraform plan
         working-directory: infra
 
+      - name: Cleanup on failure
+        if: failure()
+        run: terraform force-unlock -force ${{ env.LOCK_ID }}
+        continue-on-error: true
+        working-directory: infra
+
       - name: ${{ github.event.inputs.action == 'destroy' && 'Terraform Destroy' || 'Terraform Apply' }}
         run: |
           set -e  # fail on any error
