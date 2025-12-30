@@ -59,13 +59,36 @@ Respond with ONLY valid JSON in this exact format:
     
     const content = data.response.trim();
     
+    console.log('Raw LLM response:', content);
+    
     // Extract JSON from response
     const jsonMatch = content.match(/\{.*\}/s);
     if (!jsonMatch) {
       throw new Error('No valid JSON found in response');
     }
     
-    const result = JSON.parse(jsonMatch[0]);
+    // Clean the JSON string
+    let jsonString = jsonMatch[0]
+      .replace(/[\x00-\x1F\x7F]/g, ' ')  // Replace control chars with spaces
+      .replace(/\s+/g, ' ')             // Normalize whitespace
+      .trim();
+    
+    console.log('Cleaned JSON:', jsonString);
+    
+    let result;
+    try {
+      result = JSON.parse(jsonString);
+    } catch (parseError) {
+      console.error('Parse error:', parseError.message);
+      // Fallback: try to extract just the values
+      const sqlMatch = content.match(/"sql"\s*:\s*"([^"]+)"/i);
+      const explMatch = content.match(/"explanation"\s*:\s*"([^"]+)"/i);
+      if (sqlMatch && explMatch) {
+        result = { sql: sqlMatch[1], explanation: explMatch[1] };
+      } else {
+        throw new Error('Could not parse LLM response');
+      }
+    }
     
     // Validate result structure
     if (!result.sql || !result.explanation) {
