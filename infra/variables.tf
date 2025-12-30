@@ -70,10 +70,10 @@ variable "private_subnet_cidrs" {
   type        = list(string)
   default     = ["172.168.10.0/24", "172.168.11.0/24", "172.168.12.0/24"]
 }
-
+/*
 variable "availability_zones" {
   description = "Availability zones for subnets"
   type        = list(string)
-  default     = ""
-//  default     = ["us-east-1a", "us-east-1b", "us-east-1c"]
+  default     = ["us-east-1a", "us-east-1b", "us-east-1c"]
 }
+*/
