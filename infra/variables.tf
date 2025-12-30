@@ -9,7 +9,7 @@ variable "environment" {
   type        = string
   default     = "dev"
 }
-
+/*
 variable "ec2_instance_type" {
   description = "EC2 instance type for RDS setup"
   type        = string
@@ -70,7 +70,7 @@ variable "private_subnet_cidrs" {
   type        = list(string)
   default     = ["172.168.10.0/24", "172.168.11.0/24", "172.168.12.0/24"]
 }
-/*
+
 variable "availability_zones" {
   description = "Availability zones for subnets"
   type        = list(string)
