@@ -17,13 +17,23 @@ app.post('/api/generate-sql', async (req, res) => {
   try {
     const { query } = req.body;
 
-    const prompt = `Convert this question to SQL. Database schema:
+    const prompt = `
+Convert the user's question into a valid SQL query.
+
+Database schema (use ONLY these tables and columns):
 ${DB_SCHEMA}
 
-Question: ${query}
+Rules:
+- Do NOT invent tables or columns
+- Use standard SQL
+- Generate ONE SQL query only
+
+Question:
+${query}
 
 Respond with ONLY valid JSON in this exact format:
-{"sql": "YOUR_SQL_HERE", "explanation": "what it does"}`;
+{"sql":"SQL_QUERY_HERE","explanation":"brief description"}
+`;
 
     const response = await fetch('http://localhost:11434/api/generate', {
       method: 'POST',
