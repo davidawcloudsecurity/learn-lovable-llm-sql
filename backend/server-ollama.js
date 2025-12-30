@@ -29,7 +29,7 @@ Respond with ONLY valid JSON in this exact format:
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'smollm2:latest', // 30GB+ model
+        model: 'smollm3:latest', // 30GB+ model
         prompt: prompt,
         stream: false,
         options: {
