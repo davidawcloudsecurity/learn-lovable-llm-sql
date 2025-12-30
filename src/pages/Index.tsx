@@ -24,7 +24,7 @@ const Index = () => {
       <div ref={chatRef}>
         <ChatInterface />
       </div>
-      <div ref={featuresRef} id="examples" className="scroll-mt-24">
+      <div ref={featuresRef}>
         <Features />
       </div>
       <Footer />

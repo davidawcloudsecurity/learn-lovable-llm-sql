@@ -42,18 +42,10 @@ const Hero = ({ onGetStarted, onViewExamples }: { onGetStarted: () => void; onVi
               <Button 
                 size="lg"
                 variant="outline"
-                asChild
+                onClick={onViewExamples}
                 className="border-2 hover:bg-secondary/50 transition-all duration-300"
               >
-                <a
-                  href="#examples"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    onViewExamples();
-                  }}
-                >
-                  View Examples
-                </a>
+                View Examples
               </Button>
             </div>
             
