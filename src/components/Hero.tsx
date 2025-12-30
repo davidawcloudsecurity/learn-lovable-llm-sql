@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight, Sparkles } from "lucide-react";
 import heroImage from "@/assets/hero-sql.jpg";
 
-const Hero = ({ onGetStarted }: { onGetStarted: () => void }) => {
+const Hero = ({ onGetStarted, onViewExamples }: { onGetStarted: () => void; onViewExamples: () => void }) => {
   return (
     <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden bg-gradient-to-b from-background to-secondary/30">
       {/* Background pattern */}
@@ -42,6 +42,7 @@ const Hero = ({ onGetStarted }: { onGetStarted: () => void }) => {
               <Button 
                 size="lg"
                 variant="outline"
+                onClick={onViewExamples}
                 className="border-2 hover:bg-secondary/50 transition-all duration-300"
               >
                 View Examples

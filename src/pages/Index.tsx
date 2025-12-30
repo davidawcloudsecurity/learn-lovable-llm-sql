@@ -7,19 +7,26 @@ import Footer from "@/components/Footer";
 
 const Index = () => {
   const chatRef = useRef<HTMLDivElement>(null);
+  const featuresRef = useRef<HTMLDivElement>(null);
 
   const scrollToChat = () => {
     chatRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
+  const scrollToFeatures = () => {
+    featuresRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar onGetStarted={scrollToChat} />
-      <Hero onGetStarted={scrollToChat} />
+      <Hero onGetStarted={scrollToChat} onViewExamples={scrollToFeatures} />
       <div ref={chatRef}>
         <ChatInterface />
       </div>
-      <Features />
+      <div ref={featuresRef}>
+        <Features />
+      </div>
       <Footer />
     </div>
   );
