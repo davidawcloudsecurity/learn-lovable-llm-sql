@@ -203,7 +203,7 @@ const ChatInterface = () => {
         )}
 
         {/* Chat messages */}
-        <div className="space-y-6 mb-6 min-h-[200px]">
+        <div className="space-y-6 mb-6 h-[500px] overflow-y-auto border rounded-lg p-4">
           {messages.map((message) => (
             <Card
               key={message.id}
@@ -235,27 +235,6 @@ const ChatInterface = () => {
                           SQL
                         </span>
                         <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-7 w-7 p-0"
-                          onClick={() => handleCopy(message.sql!, message.id)}
-                        >
-                          {copiedId === message.id ? (
-                            <Check className="h-3.5 w-3.5 text-green-500" />
-                          ) : (
-                            <Copy className="h-3.5 w-3.5" />
-                          )}
-                        </Button>
-                      </div>
-                      
-                      {/* Code block */}
-                      <pre className="bg-[#1e1e1e] border border-border rounded-b-lg p-4 overflow-x-auto text-sm font-mono whitespace-pre-wrap break-words">
-                        <code className="text-[#d4d4d4] leading-relaxed block">
-                          {message.sql}
-                        </code>
-                      </pre>
-                    </div>
-                  )}
                           size="sm"
                           variant="ghost"
                           className="h-7 w-7 p-0"
