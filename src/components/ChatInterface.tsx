@@ -124,16 +124,17 @@ const ChatInterface = () => {
           <div className="mb-8 space-y-3">
             <p className="text-sm font-medium text-muted-foreground mb-3">Try these examples:</p>
             {exampleQueries.map((query, idx) => (
-              <button
+              <Button
                 key={idx}
+                variant="outline"
                 onClick={() => handleSubmit(query)}
-                className="w-full text-left p-4 rounded-lg border-2 border-border hover:border-primary/50 hover:bg-secondary/50 transition-all duration-300 group"
+                className="w-full text-left p-4 rounded-lg border-2 border-border hover:border-primary/50 hover:bg-secondary/50 transition-all duration-300 group justify-start"
               >
                 <div className="flex items-start gap-3">
                   <Database className="h-5 w-5 text-primary mt-0.5 group-hover:text-accent transition-colors" />
                   <span className="text-sm">{query}</span>
                 </div>
-              </button>
+              </Button>
             ))}
           </div>
         )}
