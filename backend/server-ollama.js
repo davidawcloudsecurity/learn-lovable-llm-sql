@@ -17,34 +17,13 @@ app.post('/api/generate-sql', async (req, res) => {
   try {
     const { query } = req.body;
 
-    const prompt = `
-You are an expert SQL generator.
-
-TASK:
-Convert the user's natural language question into a SINGLE valid SQL query.
-
-DATABASE SCHEMA (ONLY use these tables and columns):
+    const prompt = `Convert this question to SQL. Database schema:
 ${DB_SCHEMA}
 
-RULES (VERY IMPORTANT):
-- Use ONLY tables and columns listed in the schema.
-- Do NOT invent tables, columns, or relationships.
-- If the question cannot be answered using the schema, return:
-  {"sql": null, "explanation": "Cannot be answered with the given schema"}
-- Use standard ANSI SQL.
-- Do NOT include comments in the SQL.
-- Generate ONE query only.
+Question: ${query}
 
-OUTPUT FORMAT:
 Respond with ONLY valid JSON in this exact format:
-{
-  "sql": "SQL_QUERY_HERE",
-  "explanation": "Brief description of what the query does"
-}
-
-USER QUESTION:
-${query}
-`;
+{"sql": "YOUR_SQL_HERE", "explanation": "what it does"}`;
 
     const response = await fetch('http://localhost:11434/api/generate', {
       method: 'POST',
