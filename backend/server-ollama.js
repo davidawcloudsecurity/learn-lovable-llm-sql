@@ -36,7 +36,7 @@ Respond with ONLY valid JSON in this exact format:
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'smollm2:latest',
+        model: 'smollm3:latest',
         prompt: prompt,
         stream: false,
         options: {
@@ -67,10 +67,10 @@ Respond with ONLY valid JSON in this exact format:
       throw new Error('No valid JSON found in response');
     }
     
-    // Clean the JSON string
+    // Clean the JSON string but preserve newlines
     let jsonString = jsonMatch[0]
-      .replace(/[\x00-\x1F\x7F]/g, ' ')  // Replace control chars with spaces
-      .replace(/\s+/g, ' ')             // Normalize whitespace
+      .replace(/[\x00-\x09\x0B\x0C\x0E-\x1F\x7F]/g, ' ')  // Remove control chars except \n (\x0A)
+      .replace(/[ \t]+/g, ' ')                              // Normalize spaces/tabs only
       .trim();
     
     console.log('Cleaned JSON:', jsonString);
@@ -80,11 +80,14 @@ Respond with ONLY valid JSON in this exact format:
       result = JSON.parse(jsonString);
     } catch (parseError) {
       console.error('Parse error:', parseError.message);
-      // Fallback: try to extract just the values
-      const sqlMatch = content.match(/"sql"\s*:\s*"([^"]+)"/i);
-      const explMatch = content.match(/"explanation"\s*:\s*"([^"]+)"/i);
+      // Fallback: try to extract just the values with better regex
+      const sqlMatch = content.match(/"sql"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+      const explMatch = content.match(/"explanation"\s*:\s*"((?:[^"\\]|\\.)*)"/); 
       if (sqlMatch && explMatch) {
-        result = { sql: sqlMatch[1], explanation: explMatch[1] };
+        result = { 
+          sql: sqlMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"'), 
+          explanation: explMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"') 
+        };
       } else {
         throw new Error('Could not parse LLM response');
       }
