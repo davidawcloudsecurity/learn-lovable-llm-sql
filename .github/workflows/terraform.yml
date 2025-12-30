@@ -88,7 +88,16 @@ jobs:
 
       - name: Cleanup on failure
         if: failure()
-        run: terraform force-unlock -force ${{ env.LOCK_ID }}
+        run: |
+          if ! terraform plan 2>&1; then
+            LOCK_ID=$(terraform plan 2>&1 | grep -oP 'ID:\s+\K[a-f0-9-]+' | head -1)
+            if [ ! -z "$LOCK_ID" ]; then
+              echo "Found lock ID: $LOCK_ID"
+              terraform force-unlock -force $LOCK_ID
+              terraform plan
+            fi
+          fi
+          terraform force-unlock -force ${{ env.LOCK_ID }}
         continue-on-error: true
         working-directory: infra
 
