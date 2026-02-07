@@ -184,6 +184,118 @@ resource "aws_iam_role_policy_attachment" "backend_ssm_policy" {
 }
 
 # Frontend EC2 Instance
+resource "aws_instance" "frontend" {
+  ami                    = data.aws_ami.ubuntu.id
+  instance_type          = "t3.small"
+  subnet_id              = aws_subnet.public_subnet.id
+  vpc_security_group_ids = [aws_security_group.frontend_sg.id]
+  iam_instance_profile   = aws_iam_instance_profile.frontend_profile.name
+  
+  spot_price                      = "0.0209"
+  wait_for_fulfillment           = true
+  spot_type                      = "persistent"
+  instance_interruption_behavior = "stop"
+
+  user_data = <<-EOF
+              #!/bin/bash
+              apt update
+              apt install -y nginx git curl
+              
+              # Install Node.js 18 via NodeSource
+              curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+              apt install -y nodejs
+              
+              # Clone repo (replace with your repo URL)
+              cd /opt
+              git clone https://github.com/davidawcloudsecurity/learn-lovable-llm-sql.git app
+              cd app
+              npm install
+              npm run build
+              
+              # Configure nginx to serve React app
+              cat > /etc/nginx/sites-available/default <<'NGINX'
+              server {
+                listen 80;
+                root /opt/app/dist;
+                index index.html;
+                
+                # Proxy API requests to backend
+                location /api/ {
+                  proxy_pass http://${aws_spot_instance_request.backend.private_ip}:8000;
+                  proxy_set_header Host $host;
+                  proxy_set_header X-Real-IP $remote_addr;
+                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                }
+                
+                # Serve React app
+                location / {
+                  try_files $uri $uri/ /index.html;
+                }
+              }
+              NGINX
+              
+              systemctl restart nginx
+              EOF
+
+  tags = {
+    Name = "frontend-instance"
+  }
+}
+
+# Backend EC2 Instance
+resource "aws_instance" "backend" {
+  ami                    = data.aws_ami.ubuntu.id
+  instance_type          = "m5.xlarge"
+  subnet_id              = aws_subnet.public_subnet.id
+  vpc_security_group_ids = [aws_security_group.backend_sg.id]
+  iam_instance_profile   = aws_iam_instance_profile.backend_profile.name
+
+  spot_price                     = "0.09"
+  wait_for_fulfillment           = true
+  spot_type                      = "persistent"
+  instance_interruption_behavior = "stop"
+
+  root_block_device {
+    volume_type = "gp3"
+    volume_size = 50
+    encrypted   = true
+  }
+
+  user_data = <<-EOF
+              #!/bin/bash
+              apt update
+              apt install -y git curl
+
+              # Install Ollama
+              curl -fsSL https://ollama.com/install.sh | sh
+              
+              # Install Node.js 18 via NodeSource
+              curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+              apt install -y nodejs
+              
+              # Clone repo (replace with your repo URL)
+              cd /opt
+              git clone https://github.com/davidawcloudsecurity/learn-lovable-llm-sql.git app
+              cd app/backend
+              npm install
+              
+              # Install PM2 for process management
+              npm install -g pm2
+              
+              # Start backend (uncomment after setup)
+              # export AWS_REGION=us-east-1
+              # pm2 start server.js
+              # pm2 startup
+              # pm2 save
+              EOF
+
+  tags = {
+    Name = "backend-instance"
+  }
+}
+
+/*
+# Frontend EC2 Instance
 resource "aws_spot_instance_request" "frontend" {
   ami                    = data.aws_ami.ubuntu.id
   instance_type          = "t3.small"
@@ -293,7 +405,7 @@ resource "aws_spot_instance_request" "backend" {
     Name = "backend-instance"
   }
 }
-
+/*
 # Get latest Ubuntu 22.04 AMI
 data "aws_ami" "ubuntu" {
   most_recent = true
