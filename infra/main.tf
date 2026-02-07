@@ -395,7 +395,8 @@ resource "aws_spot_instance_request" "backend" {
     Name = "backend-instance"
   }
 }
-/*
+*/
+
 # Get latest Ubuntu 22.04 AMI
 data "aws_ami" "ubuntu" {
   most_recent = true
