@@ -216,7 +216,7 @@ resource "aws_instance" "frontend" {
                 
                 # Proxy API requests to backend
                 location /api/ {
-                  proxy_pass http://${aws_spot_instance_request.backend.private_ip}:8000;
+                  proxy_pass http://${aws_instance.backend.private_ip}:8000;
                   proxy_set_header Host $host;
                   proxy_set_header X-Real-IP $remote_addr;
                   proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
